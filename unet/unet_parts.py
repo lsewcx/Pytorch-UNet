@@ -54,7 +54,7 @@ class Down(nn.Module):
     def __init__(self, in_channels, out_channels):
         super().__init__()
         self.maxpool_conv = nn.Sequential(
-            nn.MaxPool2d(2, stride=2),
+            nn.MaxPool2d(2),
             DoubleConv(in_channels, out_channels)
         )
 
