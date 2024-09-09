@@ -1,1 +1,1 @@
-from .unet_model import UNet,UNet_Attention
+from .unet_model import UNet_Attention
