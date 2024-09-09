@@ -7,3 +7,4 @@ checkpoints/
 venv/
 .idea/
 wandb/
+Pytorch-UNet/ceping/NEU_Seg-main
