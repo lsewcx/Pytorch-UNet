@@ -41,7 +41,7 @@ class DoubleConv(nn.Module):
             nn.Conv2d(mid_channels, out_channels, kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(out_channels),
             nn.ReLU(inplace=True),
-            MultiHeadAttention(out_channels, 16)
+            MultiHeadAttention(out_channels, 4)
         )
 
     def forward(self, x):
