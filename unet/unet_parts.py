@@ -4,19 +4,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-class FPN(nn.Module):
-    def __init__(self, in_channels_list, out_channels):
-        super(FPN, self).__init__()
-        self.feats = nn.ModuleList([nn.Conv2d(in_channels, out_channels, 1) for in_channels in in_channels_list])
-        self.laterals = nn.ModuleList([nn.Conv2d(out_channels, out_channels, 3, padding=1) for _ in in_channels_list])
-
-    def forward(self, features):
-        # features is a list of feature maps from different levels of the backbone
-        laterals = [lateral(feature) for lateral, feature in zip(self.laterals, features)]
-        for i in range(len(features) - 1, 0, -1):
-            prev_shape = laterals[i - 1].shape[2:]
-            laterals[i - 1] += F.interpolate(laterals[i], size=prev_shape, mode='bilinear', align_corners=True)
-        return [self.feats[i](laterals[i]) for i in range(len(laterals))]
 
 class MultiHeadAttention(nn.Module):
     def __init__(self, in_channels, num_heads):
