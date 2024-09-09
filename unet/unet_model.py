@@ -87,4 +87,4 @@ class UNet_Attention(nn.Module):
         x = self.up4(x, x1)
         x = self.CBAM(x)
         logits = self.outc(x)
-        return nn.Sigmoid()(logits)
+        return torch.sigmoid(logits)
