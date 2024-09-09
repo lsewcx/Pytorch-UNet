@@ -57,10 +57,10 @@ if __name__ == '__main__':
     args = get_args()
     logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
-    in_dir = args.input_dir
+    in_dir = "/kaggle/input/neuseg/NEU_Seg-main/images/test"
     out_dir = get_output_filenames(args)
 
-    net = UNet(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
+    net = UNet(n_channels=3, n_classes=4, bilinear=false)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     logging.info(f'Loading model {args.model}')
@@ -87,7 +87,3 @@ if __name__ == '__main__':
             output_filename = os.path.join(out_dir, f'prediction_{filename[:-4]}.npy')
             np.save(output_filename, mask)
             logging.info(f'Mask saved to {output_filename}')
-
-            if args.viz:
-                logging.info(f'Visualizing results for image {filename}, close to continue...')
-                plot_img_and_mask(img, mask)
