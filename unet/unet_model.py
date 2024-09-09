@@ -3,57 +3,69 @@
 from .unet_parts import *
 
 
-class ChannelAttention(nn.Module):
-    def __init__(self, in_planes, ratio=16):
-        super(ChannelAttention, self).__init__()
-        self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        self.max_pool = nn.AdaptiveMaxPool2d(1)
- 
-        self.fc1 = nn.Conv2d(in_planes, in_planes // ratio, 1, bias=False)
-        self.relu1 = nn.ReLU()
-        self.fc2 = nn.Conv2d(in_planes // ratio, in_planes, 1, bias=False)
-        self.sigmoid = nn.Sigmoid()
- 
-    def forward(self, x):
-        avg_out = self.fc2(self.relu1(self.fc1(self.avg_pool(x))))
-        max_out = self.fc2(self.relu1(self.fc1(self.max_pool(x))))
-        out = avg_out + max_out
-        return self.sigmoid(out)
- 
- 
-# 空间注意力模块
-class SpatialAttention(nn.Module):
-    def __init__(self, kernel_size=7):
-        super(SpatialAttention, self).__init__()
- 
-        assert kernel_size in (3, 7), 'kernel size must be 3 or 7'
-        padding = 3 if kernel_size == 7 else 1
- 
-        self.conv1 = nn.Conv2d(2, 1, kernel_size, padding=padding, bias=False)  # 7,3     3,1
-        self.sigmoid = nn.Sigmoid()
- 
-    def forward(self, x):
-        avg_out = torch.mean(x, dim=1, keepdim=True)
-        max_out, _ = torch.max(x, dim=1, keepdim=True)
-        x = torch.cat([avg_out, max_out], dim=1)
-        x = self.conv1(x)
-        return self.sigmoid(x)
- 
- 
-'''------------- CBAM模块-----------------------------'''
- 
- 
-class CBAM(nn.Module):
-    # in_planes:输入特征图通道数
-    def __init__(self, in_planes, ratio=16, kernel_size=7):
-        super(CBAM, self).__init__()
-        self.ca = ChannelAttention(in_planes, ratio)
-        self.sa = SpatialAttention(kernel_size)
+class SKConv(nn.Module):
+    def __init__(self, features, WH, M, G, r, stride=1, L=32):
+        """ Constructor
+        Args:
+            features: 输入通道维度
+            WH: 输入特征图的空间维度
+            M: 分支的数量
+            G: 卷积组的数量
+            r: 计算d，向量s的压缩倍数，C/r
+            stride: 步长，默认为1
+            L: 矢量z的最小维度，默认为32
+        """
+        super(SKConv, self).__init__()
+        d = max(int(features / r), L)
+        self.M = M
+        self.features = features
+        self.convs = nn.ModuleList([])
+        # 使用不同kernel size的卷积，增加不同的感受野
+        for i in range(M):
+            self.convs.append(nn.Sequential(
+                nn.Conv2d(features, features, kernel_size=3 + i * 2, stride=stride, padding=1 + i, groups=G),
+                nn.BatchNorm2d(features),
+                nn.ReLU(inplace=False)
+            ))
+        # 全局平均池化
+        self.gap = nn.AvgPool2d(int(WH / stride))
+        self.fc = nn.Linear(features, d)
+        self.fcs = nn.ModuleList([])
+        # 全连接层
+        for i in range(M):
+            self.fcs.append(
+                nn.Linear(d, features)
+            )
+        self.softmax = nn.Softmax(dim=1)
  
     def forward(self, x):
-        out = x * self.ca(x)
-        result = out * self.sa(out)
-        return result
+        ''' Split操作'''
+        for i, conv in enumerate(self.convs):
+            fea = conv(x).unsqueeze_(dim=1)
+            if i == 0:
+                feas = fea
+            else:
+                feas = torch.cat([feas, fea], dim=1)
+ 
+        ''' Fuse操作'''
+        fea_U = torch.sum(feas, dim=1)
+        fea_s = self.gap(fea_U).squeeze_()
+        fea_z = self.fc(fea_s)
+ 
+        ''' Select操作'''
+        for i, fc in enumerate(self.fcs):
+            # fc-->d*c维
+            vector = fc(fea_z).unsqueeze_(dim=1)
+            if i == 0:
+                attention_vectors = vector
+            else:
+                attention_vectors = torch.cat([attention_vectors, vector], dim=1)
+        # 计算attention权重
+        attention_vectors = self.softmax(attention_vectors)
+        attention_vectors = attention_vectors.unsqueeze(-1).unsqueeze(-1)
+        # 最后一步，各特征图与对应的注意力权重相乘，得到输出特征图V
+        fea_v = (feas * attention_vectors).sum(dim=1)
+        return fea_v
 
 
 class UNet_Attention(nn.Module):
@@ -74,7 +86,7 @@ class UNet_Attention(nn.Module):
         self.up3 = (Up(256, 128 // factor, bilinear))
         self.up4 = (Up(128, 64, bilinear))
         self.outc = (OutConv(64, n_classes))
-        self.CBAM = CBAM(64)
+        self.sk = SKConv(64, 480, 2, 1, 2)
 
     def forward(self, x):
         x1 = self.inc(x)
@@ -86,6 +98,6 @@ class UNet_Attention(nn.Module):
         x = self.up2(x, x3)
         x = self.up3(x, x2)
         x = self.up4(x, x1)
-        x = self.CBAM(x)
+        x = self.sk(x)
         logits = self.outc(x)
-        return  torch.sigmoid(logits)
+        return logits
