@@ -59,7 +59,7 @@ if __name__ == '__main__':
     in_dir = "/kaggle/input/neuseg/NEU_Seg-main/images/test"
     out_dir = get_output_filenames(args)
 
-    net = UNet(n_channels=3, n_classes=4, bilinear=False)
+    net = UNet_Attention(n_channels=3, n_classes=4, bilinear=False)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     logging.info(f'Loading model {args.model}')
