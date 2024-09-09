@@ -34,7 +34,6 @@ def get_args():
     parser = argparse.ArgumentParser(description='Predict masks from input images')
     parser.add_argument('--model', '-m', default='MODEL.pth', metavar='FILE',
                         help='Specify the file in which the model is stored')
-    parser.add_argument('--input-dir', '-i', metavar='INPUT_DIR', required=True, help='Directory of input images')
     parser.add_argument('--output-dir', '-o', metavar='OUTPUT_DIR', default='test_predictions', help='Directory to save output images')
     parser.add_argument('--viz', '-v', action='store_true',
                         help='Visualize the images as they are processed')
@@ -60,7 +59,7 @@ if __name__ == '__main__':
     in_dir = "/kaggle/input/neuseg/NEU_Seg-main/images/test"
     out_dir = get_output_filenames(args)
 
-    net = UNet(n_channels=3, n_classes=4, bilinear=false)
+    net = UNet(n_channels=3, n_classes=4, bilinear=False)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     logging.info(f'Loading model {args.model}')
