@@ -80,6 +80,7 @@ def train_model(
     grad_scaler = torch.cuda.amp.GradScaler(enabled=amp)
     criterion = nn.CrossEntropyLoss() if model.n_classes > 1 else nn.BCEWithLogitsLoss()
     global_step = 0
+    best_val_score = float('-inf')
 
     # 5. Begin training
     for epoch in range(1, epochs + 1):
@@ -143,6 +144,12 @@ def train_model(
                         scheduler.step(val_score)
 
                         logging.info('Validation Dice score: {}'.format(val_score))
+                        if val_score > best_val_score:
+                            best_val_score = val_score
+                            logging.info(f'New best model with Dice score: {val_score}')
+                            Path(dir_checkpoint).mkdir(parents=True, exist_ok=True)
+                            torch.save(model, 'best_model.pth')
+                            logging.info('Best model saved!')
                         try:
                             experiment.log({
                                 'learning rate': optimizer.param_groups[0]['lr'],
