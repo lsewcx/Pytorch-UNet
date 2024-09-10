@@ -3,9 +3,6 @@
 from .unet_parts import *
 
 
-
-
-
 class UNet_Attention(nn.Module):
     def __init__(self, n_channels, n_classes, bilinear=False, dropout_rate=0.5):
         super(UNet_Attention, self).__init__()
@@ -36,9 +33,9 @@ class UNet_Attention(nn.Module):
         x5 = self.down4(x4)
         x5 = self.dropout(x5)  # 在下采样的最后一层添加 Dropout
         x = self.up1(x5, x4)
-        x = self.dropout(x)  # 在上采样层之间添加 Dropout
         x = self.up2(x, x3)
         x = self.up3(x, x2)
         x = self.up4(x, x1)
+        x = self.dropout(x)  # 在上采样层之间添加 Dropout
         logits = self.outc(x)
         return logits
