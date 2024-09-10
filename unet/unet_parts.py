@@ -4,6 +4,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+#使用inception-ResNet v2 architecture结构使用不同的感受野训练特征；
+#加入了残差连接
 class InceptionResNetV2Module(nn.Module):
     def __init__(self, in_channels, out_channels):
         super(InceptionResNetV2Module, self).__init__()
