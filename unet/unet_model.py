@@ -4,7 +4,9 @@ from .unet_parts import *
 from torchvision.models import resnet50, ResNet50_Weights
 import torchvision.models as models
 
-
+'''
+在原本的unet基础上减少了层数512->1024的部分删除了
+'''
 # class UNet_Attention(nn.Module):
 #     def __init__(self, n_channels, n_classes, bilinear=False, dropout_rate=0.5):
 #         super(UNet_Attention, self).__init__()
