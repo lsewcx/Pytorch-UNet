@@ -65,7 +65,8 @@ sudo docker run --rm --shm-size=8g --ulimit memlock=-1 --gpus all -it milesial/u
 
 4. 下载数据并开始训练：
 ```bash
-bash scripts/download_data.sh
+cd Pytorch-UNet
+unzip ceping/NEU_Seg-main.zip
 python train.py --classes 4 --batch-size 16 --epochs 50 --scale 0.5
 ```
 
