@@ -51,24 +51,24 @@ class UNet_Attention(nn.Module):
         self.n_classes = n_classes
         self.bilinear = bilinear
 
-        self.inc = DoubleConv(n_channels, 64)
-        self.down1 = Down(64, 128)
-        self.down2 = Down(128, 256)
-        self.down3 = Down(256, 512)
+        self.inc = DoubleConv(n_channels, 32)
+        self.down1 = Down(64, 64)
+        self.down2 = Down(64, 128)
+        self.down3 = Down(128, 256)
         factor = 2 if bilinear else 1
-        self.down4 = Down(512, 1024 // factor)
-        self.up1 = Up(1024, 512 // factor, bilinear)
-        self.up2 = Up(512, 256 // factor, bilinear)
-        self.up3 = Up(256, 128 // factor, bilinear)
-        self.up4 = Up(128, 64, bilinear)
-        self.outc = OutConv(64, n_classes)
+        self.down4 = Down(256, 512 // factor)
+        self.up1 = Up(512, 256 // factor, bilinear)
+        self.up2 = Up(256, 128 // factor, bilinear)
+        self.up3 = Up(128, 64 // factor, bilinear)
+        self.up4 = Up(64, 32, bilinear)
+        self.outc = OutConv(32, n_classes)
         
         # 添加残差连接的卷积层
-        self.res1 = nn.Conv2d(n_channels, 64, kernel_size=1, padding=0, stride=1)
-        self.res2 = nn.Conv2d(64, 128, kernel_size=1, padding=0, stride=1)
-        self.res3 = nn.Conv2d(128, 256, kernel_size=1, padding=0, stride=1)
-        self.res4 = nn.Conv2d(256, 512, kernel_size=1, padding=0, stride=1)
-        self.res5 = nn.Conv2d(512, 1024 // factor, kernel_size=1, padding=0, stride=1)
+        self.res1 = nn.Conv2d(n_channels, 32, kernel_size=1, padding=0, stride=1)
+        self.res2 = nn.Conv2d(32, 64, kernel_size=1, padding=0, stride=1)
+        self.res3 = nn.Conv2d(64, 128, kernel_size=1, padding=0, stride=1)
+        self.res4 = nn.Conv2d(128, 256, kernel_size=1, padding=0, stride=1)
+        self.res5 = nn.Conv2d(256, 512 // factor, kernel_size=1, padding=0, stride=1)
         
         # 添加 Dropout 层
         self.dropout = nn.Dropout(dropout_rate)
