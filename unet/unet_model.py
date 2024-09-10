@@ -64,8 +64,8 @@ class UNet_Attention(nn.Module):
         self.outc = OutConv(32, n_classes)
         
         # 添加残差连接的卷积层
-        self.res1 = nn.Conv2d(32, 32, kernel_size=1, padding=0, stride=1)  # 修改这里
-        self.res2 = nn.Conv2d(32, 64, kernel_size=1, padding=0, stride=1)
+        self.res1 = nn.Conv2d(32, 32, kernel_size=1, padding=0, stride=1)
+        self.res2 = nn.Conv2d(64, 64, kernel_size=1, padding=0, stride=1)  # 修改这里
         self.res3 = nn.Conv2d(64, 128, kernel_size=1, padding=0, stride=1)
         self.res4 = nn.Conv2d(128, 256, kernel_size=1, padding=0, stride=1)
         self.res5 = nn.Conv2d(256, 512 // factor, kernel_size=1, padding=0, stride=1)
