@@ -38,9 +38,16 @@ git clone https://github.com/lsewcx/Pytorch-UNet.git
 pip install -r requirements.txt
 ```
 
-4. 下载数据并开始训练：
+5. 下载数据并开始训练：
 ```bash
-unzip Pytorch-UNet/ceping/NEU_Seg-main.zip
+cd Pytorch-UNet
+unzip ceping/NEU_Seg-main.zip
+python train.py --classes 4 --batch-size 16 --epochs 50 --scale 0.5
+```
+
+6. 推理
+```bash 
+python predict.py --model best_model.pth
 ```
 
 ### 使用 Docker
@@ -63,17 +70,6 @@ sudo systemctl restart docker
 sudo docker run --rm --shm-size=8g --ulimit memlock=-1 --gpus all -it milesial/unet
 ```
 
-4. 下载数据并开始训练：
-```bash
-cd Pytorch-UNet
-unzip ceping/NEU_Seg-main.zip
-python train.py --classes 4 --batch-size 16 --epochs 50 --scale 0.5
-```
-
-5. 推理
-```bash 
-python predict.py --model best_model.pth
-```
 
 ## 描述
 这个模型是从 5000 张图像从头开始训练的，并且在超过 100000 张测试图像上得分为 [Dice 系数](https://en.wikipedia.org/wiki/S%C3%B8rensen%E2%80%93Dice_coefficient) 0.988423。
