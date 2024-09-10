@@ -19,8 +19,8 @@ from unet import UNet_Attention
 from utils.data_loading import BasicDataset, CarvanaDataset
 from utils.dice_score import dice_loss
 
-dir_img = Path('/kaggle/input/neuseg/NEU_Seg-main/images/training')
-dir_mask = Path('/kaggle/input/neuseg/NEU_Seg-main/annotations/training')
+dir_img = Path('./ceping/NEU_Seg-main/images/training')
+dir_mask = Path('./ceping/NEU_Seg-main/annotations/training')
 dir_checkpoint = Path('./checkpoints/')
 
 
