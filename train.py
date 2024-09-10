@@ -135,10 +135,11 @@ def train_model(
             histograms = {}
             for tag, value in model.named_parameters():
                 tag = tag.replace('/', '.')
-                if not (torch.isinf(value) | torch.isnan(value)).any():
-                    histograms['Weights/' + tag] = wandb.Histogram(value.data.cpu())
-                if not (torch.isinf(value.grad) | torch.isnan(value.grad)).any():
-                    histograms['Gradients/' + tag] = wandb.Histogram(value.grad.data.cpu())
+                if value.grad is not None and (torch.isinf(value.grad) | torch.isnan(value.grad)).any():
+                    if not (torch.isinf(value) | torch.isnan(value)).any():
+                        histograms['Weights/' + tag] = wandb.Histogram(value.data.cpu())
+                    if not (torch.isinf(value.grad) | torch.isnan(value.grad)).any():
+                        histograms['Gradients/' + tag] = wandb.Histogram(value.grad.data.cpu())
 
             val_score = evaluate(model, val_loader, device, amp)
             scheduler.step(val_score)
