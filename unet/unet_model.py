@@ -75,21 +75,18 @@ class UNet_Attention(nn.Module):
 
     def forward(self, x):
         # 下采样部分
-        x1_res = self.res1(x)  # 残差连接
-        x1 = self.inc(x) + x1_res
-        x2 = self.down1(x1)
+        x1 = self.inc(x)
+        x1_res = self.res1(x1)  # 残差连接
+        x2 = self.down1(x1 + x1_res)
         
         x2_res = self.res2(x2)  # 残差连接
-        x2 = self.down2(x2) + x2_res
-        x3 = self.down3(x2)
+        x3 = self.down2(x2 + x2_res)
         
         x3_res = self.res3(x3)  # 残差连接
-        x3 = self.down3(x3) + x3_res
-        x4 = self.down4(x3)
+        x4 = self.down3(x3 + x3_res)
         
         x4_res = self.res4(x4)  # 残差连接
-        x4 = self.down4(x4) + x4_res
-        x5 = self.dropout(x4)  # 在下采样的最后一层添加 Dropout
+        x5 = self.dropout(self.down4(x4 + x4_res))  # 在下采样的最后一层添加 Dropout
         
         # 上采样部分
         x = self.up1(x5, x4)
