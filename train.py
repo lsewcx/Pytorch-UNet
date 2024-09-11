@@ -208,10 +208,9 @@ if __name__ == '__main__':
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     logger.info(f'Using device {torch.device("cuda" if torch.cuda.is_available() else "cpu")}')
-    # Change here to adapt to your data
-    # n_channels=3 for RGB images
-    # n_classes is the number of probabilities you want to get per pixel
-    # model = UNet(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
+    '''
+    UNet_less效果最好到现在为止
+    '''
     if args.model == 'UNet_More_Less':
         model = UNet_More_Less(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
     elif args.model == 'UNet_less':

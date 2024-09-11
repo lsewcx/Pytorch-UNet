@@ -16,7 +16,7 @@ class UNet_plusplus(nn.Module):
         factor = 2 if bilinear else 1
         self.down4 = Down(256, 512 // factor)
 
-        self.up1_0 = Up(512, 256 // factor, bilinear)
+        self.up1_0 = Up(512 // factor, 256 // factor, bilinear)
         self.up2_0 = Up(256, 128 // factor, bilinear)
         self.up3_0 = Up(128, 64 // factor, bilinear)
         self.up4_0 = Up(64, 32, bilinear)
