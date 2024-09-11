@@ -107,6 +107,6 @@ class UNetPlusPlus(nn.Module):
         output = (out_1 + out_2 + out_3 + out_4) / 4
 
         if self.is_ds:
-            return [output]
+            return output
         else:
-            return [out_4]
+            return out_4
