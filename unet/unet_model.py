@@ -239,6 +239,11 @@ class AttentionBlock(nn.Module):
     def forward(self, g, x):
         g1 = self.W_g(g)
         x1 = self.W_x(x)
+        
+        # 确保 g1 和 x1 的尺寸一致
+        if g1.size() != x1.size():
+            g1 = F.interpolate(g1, size=x1.size()[2:], mode='bilinear', align_corners=True)
+        
         psi = self.relu(g1 + x1)
         psi = self.psi(psi)
         res = x * psi
