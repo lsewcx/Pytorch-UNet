@@ -9,7 +9,7 @@ import torchvision.models as models
 到现在为止效果最好的模型
 '''
 class UNet_less(nn.Module):
-    def __init__(self, n_channels, n_classes, bilinear=False, dropout_rate=0.4):
+    def __init__(self, n_channels, n_classes, bilinear=False, dropout_rate=0.5):
         super(UNet_less, self).__init__()
         self.n_channels = n_channels
         self.n_classes = n_classes

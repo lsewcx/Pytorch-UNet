@@ -41,27 +41,6 @@ class InceptionResNetV2Module(nn.Module):
         x = self.bn(x)
         x = self.relu(x)
         return x
-
-class MultiHeadAttention(nn.Module):
-    def __init__(self, in_channels, num_heads):
-        super(MultiHeadAttention, self).__init__()
-        assert in_channels % num_heads == 0, "in_channels should be divisible by num_heads"
-        self.num_heads = num_heads
-        self.head_dim = in_channels // num_heads
-        self.scale = self.head_dim ** -0.5
-
-        self.qkv = nn.Conv2d(in_channels, in_channels * 3, kernel_size=1, stride=1, padding=0)
-        self.attention = nn.Softmax(dim=-1)
-        self.out = nn.Conv2d(in_channels, in_channels, kernel_size=1, stride=1, padding=0)
-
-    def forward(self, x):
-        B, C, H, W = x.size()
-        qkv = self.qkv(x).reshape(B, 3 * self.num_heads, self.head_dim, H * W)
-        q, k, v = qkv.chunk(3, dim=1)
-        q = q * self.scale
-        attn = self.attention(q @ k.transpose(-2, -1))
-        x = (attn @ v).transpose(1, 2).reshape(B, C, H, W)
-        return self.out(x)
     
 class DoubleConvInceptionResNetV2(nn.Module):
     def __init__(self, in_channels, out_channels, mid_channels=None):
@@ -82,7 +61,7 @@ class DoubleConvInceptionResNetV2(nn.Module):
         return self.double_conv(x)
 
 class DoubleConv(nn.Module):
-    """(convolution => [BN] => LeakyReLU) * 2"""
+    """(convolution => [BN] => ReLU) * 2"""
 
     def __init__(self, in_channels, out_channels, mid_channels=None):
         super().__init__()
@@ -91,10 +70,10 @@ class DoubleConv(nn.Module):
             self.double_conv = nn.Sequential(
                 nn.Conv2d(in_channels, mid_channels, kernel_size=3, padding=1, bias=False),
                 nn.BatchNorm2d(mid_channels),
-                nn.LeakyReLU(inplace=True),
+                nn.ReLU(inplace=True),
                 nn.Conv2d(mid_channels, out_channels, kernel_size=3, padding=1, bias=False),
                 nn.BatchNorm2d(out_channels),
-                nn.LeakyReLU(inplace=True),
+                nn.ReLU(inplace=True),
             )
 
     def forward(self, x):
