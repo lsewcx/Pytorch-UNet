@@ -22,6 +22,7 @@ class DoubleConv(nn.Module):
 class UpSampling(nn.Module):
     def __init__(self, in_channels, out_channels, n_cat, use_deconv=False, align_corners=False):
         super(UpSampling, self).__init__()
+        self.n_cat = n_cat
         if use_deconv:
             self.up = nn.ConvTranspose2d(in_channels , in_channels // 2, kernel_size=2, stride=2)
         else:
@@ -29,14 +30,16 @@ class UpSampling(nn.Module):
         
         self.conv = DoubleConv(n_cat * out_channels, out_channels)
 
-    def forward(self, high_feature, *low_features):
+    def forward(self, high_feature, low_feature1, low_feature2=None, low_feature3=None, low_feature4=None):
         x = self.up(high_feature)
+        low_features = [low_feature1, low_feature2, low_feature3, low_feature4]
+        low_features = [lf for lf in low_features if lf is not None]
         for i in range(len(low_features)):
             diffY = low_features[i].size()[2] - x.size()[2]
             diffX = low_features[i].size()[3] - x.size()[3]
             x = F.pad(x, [diffX // 2, diffX - diffX // 2,
                           diffY // 2, diffY - diffY // 2])
-        x = torch.cat([x, *low_features], dim=1)
+        x = torch.cat([x] + low_features, dim=1)
         return self.conv(x)
 
 class UNetPlusPlus(nn.Module):
