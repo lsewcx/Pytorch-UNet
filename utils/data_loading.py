@@ -108,7 +108,6 @@ class BasicDataset(Dataset):
                 img = img / 255.0
 
             return img
-
     def __getitem__(self, idx):
         name = self.ids[idx]
         mask_file = list(self.mask_dir.glob(name + self.mask_suffix + '.*'))
@@ -121,20 +120,41 @@ class BasicDataset(Dataset):
 
         assert img.size == mask.size, \
             f'Image and mask {name} should be the same size, but are {img.size} and {mask.size}'
+        
+        # 将图像和掩码转换为 NumPy 数组
         img = np.array(img)
         mask = np.array(mask)
 
+        # 应用数据增强，同时传递图像和掩码
         augmented = transform(image=img, mask=mask)
         img = augmented['image']
         mask = augmented['mask']
 
-        img = self.preprocess(self.mask_values, img, self.scale, is_mask=False)
-        mask = self.preprocess(self.mask_values, mask, self.scale, is_mask=True)
-
         return {
-            'image': torch.as_tensor(img.copy()).float().contiguous(),
-            'mask': torch.as_tensor(mask.copy()).long().contiguous()
+            'image': img.float().contiguous(),
+            'mask': mask.long().contiguous()
         }
+
+    # def __getitem__(self, idx):
+    #     name = self.ids[idx]
+    #     mask_file = list(self.mask_dir.glob(name + self.mask_suffix + '.*'))
+    #     img_file = list(self.images_dir.glob(name + '.*'))
+
+    #     assert len(img_file) == 1, f'Either no image or multiple images found for the ID {name}: {img_file}'
+    #     assert len(mask_file) == 1, f'Either no mask or multiple masks found for the ID {name}: {mask_file}'
+    #     mask = load_image(mask_file[0])
+    #     img = load_image(img_file[0])
+
+    #     assert img.size == mask.size, \
+    #         f'Image and mask {name} should be the same size, but are {img.size} and {mask.size}'
+
+    #     img = self.preprocess(self.mask_values, img, self.scale, is_mask=False)
+    #     mask = self.preprocess(self.mask_values, mask, self.scale, is_mask=True)
+
+    #     return {
+    #         'image': torch.as_tensor(img.copy()).float().contiguous(),
+    #         'mask': torch.as_tensor(mask.copy()).long().contiguous()
+    #     }
 
 
 class CarvanaDataset(BasicDataset):
