@@ -8,3 +8,4 @@ venv/
 .idea/
 wandb/
 NEU_Seg-main/
+*.zip

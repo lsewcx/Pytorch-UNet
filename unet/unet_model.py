@@ -81,6 +81,7 @@ class UNet_More_Less(nn.Module):
         x = self.up4(x, x1)
         logits = self.outc(x)
         return logits
+
     
 '''
 把参数量缩的更小了但是添加了inception v2模块
