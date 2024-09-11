@@ -219,7 +219,7 @@ if __name__ == '__main__':
     elif args.model == 'UNetInception':
         model = UNetInception(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
     elif args.model == 'UNetAttention':
-        model = UNetAttention(in_channels=3, num_classes=args.classes, bilinear=args.bilinear)
+        model = UNetAttention(in_channels=3, num_classes=args.classes)
     else:
         raise ValueError(f'Unknown model name: {args.model}')
     logger.info(f'Network: {model.__class__.__name__}')
