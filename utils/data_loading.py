@@ -122,15 +122,12 @@ class BasicDataset(Dataset):
         assert img.size == mask.size, \
             f'Image and mask {name} should be the same size, but are {img.size} and {mask.size}'
         
-        img = self.preprocess(self.mask_values, img, self.scale, is_mask=False)
-        mask = self.preprocess(self.mask_values, mask, self.scale, is_mask=True)
-
-        img = img.astype(np.uint8)
-        mask = mask.astype(np.uint8)
-
         augmented = transform(image=img, mask=mask)
         img = augmented['image']
         mask = augmented['mask']
+
+        img = self.preprocess(self.mask_values, img, self.scale, is_mask=False)
+        mask = self.preprocess(self.mask_values, mask, self.scale, is_mask=True)
 
         return {
             'image': torch.as_tensor(img.copy()).float().contiguous(),
