@@ -21,6 +21,7 @@ transform = A.Compose([
     A.OneOf([
         A.ElasticTransform(p=0.5),  # 弹性变换
         A.GridDistortion(p=0.5),  # 网格畸变
+        A.OpticalDistortion(p=0.5),  # 光学畸变
     ], p=0.3),
     A.ShiftScaleRotate(shift_limit=0.0625, scale_limit=0.1, rotate_limit=45, p=0.5),  # 平移、缩放、旋转
     A.OneOf([
@@ -126,12 +127,8 @@ class BasicDataset(Dataset):
         img = self.preprocess(self.mask_values, img, self.scale, is_mask=False)
         mask = self.preprocess(self.mask_values, mask, self.scale, is_mask=True)
 
-        img = img.astype(np.uint8)
-        mask = mask.astype(np.uint8)
-
-        augmented = transform(image=img, mask=mask)
+        augmented = transform(image=img)
         img = augmented['image']
-        mask = augmented['mask']
 
         return {
             'image': torch.as_tensor(img.copy()).float().contiguous(),
