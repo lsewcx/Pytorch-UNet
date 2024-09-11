@@ -11,6 +11,24 @@ from os.path import splitext, isfile, join
 from pathlib import Path
 from torch.utils.data import Dataset
 from tqdm import tqdm
+import albumentations as A
+from albumentations.pytorch import ToTensorV2
+
+transform = A.Compose([
+        A.HorizontalFlip(p=0.5),
+        A.VerticalFlip(p=0.5),
+        A.OneOf([
+            A.GaussNoise(),    # 将高斯噪声应用于输入图像。
+        ], p=0.2),   # 应用选定变换的概率
+        A.OneOf([
+            A.MotionBlur(p=0.2),   # 使用随机大小的内核将运动模糊应用于输入图像。
+            A.MedianBlur(blur_limit=3, p=0.1),    # 中值滤波
+            A.Blur(blur_limit=3, p=0.1),   # 使用随机大小的内核模糊输入图像。
+        ], p=0.2),
+        A.ShiftScaleRotate(shift_limit=0.0625, scale_limit=0.2, rotate_limit=45, p=0.2),
+        # 随机应用仿射变换：平移，缩放和旋转输入
+        A.RandomBrightnessContrast(p=0.2),   # 随机明亮对比度
+    ])
 
 
 def load_image(filename):
@@ -102,9 +120,13 @@ class BasicDataset(Dataset):
 
         assert img.size == mask.size, \
             f'Image and mask {name} should be the same size, but are {img.size} and {mask.size}'
-
+        
         img = self.preprocess(self.mask_values, img, self.scale, is_mask=False)
         mask = self.preprocess(self.mask_values, mask, self.scale, is_mask=True)
+
+        augmented = transform(image=img, mask=mask)
+        img = augmented['image']
+        mask = augmented['mask']
 
         return {
             'image': torch.as_tensor(img.copy()).float().contiguous(),
