@@ -29,7 +29,6 @@ transform = A.Compose([
         A.ISONoise(p=0.2),  # ISO噪声
     ], p=0.2),
     A.RandomBrightnessContrast(p=0.3),  # 随机亮度和对比度
-    A.Resize(height=256, width=256),  # 确保图像和掩码的尺寸一致
 ], additional_targets={'mask': 'mask'},is_check_shapes=False)
 
 
@@ -128,7 +127,7 @@ class BasicDataset(Dataset):
 
         img = img.astype(np.uint8)
         mask = mask.astype(np.uint8)
-        
+
         augmented = transform(image=img, mask=mask)
         img = augmented['image']
         mask = augmented['mask']
