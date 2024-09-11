@@ -159,6 +159,9 @@ class UNetAttention(nn.Module):
 
     def __init__(self, n_channels=3, n_classes=4, pretrained=None, bilinear=False):
         super(UNetAttention, self).__init__()
+        self.n_channels = n_channels
+        self.n_classes = n_classes
+        self.bilinear = bilinear
         self.encoder = Encoder(n_channels, [64, 128, 256, 512])
         filters = [64, 128, 256, 512, 1024]
         self.up5 = UpConv(ch_in=filters[4], ch_out=filters[3])
