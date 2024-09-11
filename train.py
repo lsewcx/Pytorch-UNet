@@ -176,13 +176,13 @@ def train_model(
                         except:
                             pass
 
-        if save_checkpoint:
-            Path(dir_checkpoint).mkdir(parents=True, exist_ok=True)
-            torch.save(model,"model.pth")
-            # state_dict = model.state_dict()
-            # state_dict['mask_values'] = dataset.mask_values
-            # torch.save(state_dict, str(dir_checkpoint / 'checkpoint_epoch{}.pth'.format(epoch)))
-            logger.info(f'Checkpoint {epoch} saved!')
+            if save_checkpoint:
+                Path(dir_checkpoint).mkdir(parents=True, exist_ok=True)
+                torch.save(model,"model.pth")
+                # state_dict = model.state_dict()
+                # state_dict['mask_values'] = dataset.mask_values
+                # torch.save(state_dict, str(dir_checkpoint / 'checkpoint_epoch{}.pth'.format(epoch)))
+                logger.info(f'Checkpoint {epoch} saved!')
 
 
 def get_args():
@@ -211,7 +211,7 @@ if __name__ == '__main__':
     # n_channels=3 for RGB images
     # n_classes is the number of probabilities you want to get per pixel
     # model = UNet(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
-    model = UNet_More_Less(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
+    model = UNet_less(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
     logger.info(f'Network: {model.__class__.__name__}')
     model = model.to(memory_format=torch.channels_last)
 
