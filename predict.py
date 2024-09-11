@@ -44,7 +44,8 @@ def get_args():
                         help='Scale factor for the input images')
     parser.add_argument('--bilinear', action='store_true', default=False, help='Use bilinear upsampling')
     parser.add_argument('--classes', '-c', type=int, default=2, help='Number of classes')
-    
+    parser.add_argument('--model-name', '-n', type=str, default='UNet_less', help='Model name')
+
     return parser.parse_args()
 
 def get_output_filenames(args):
@@ -59,7 +60,14 @@ if __name__ == '__main__':
     in_dir = "/kaggle/input/neuseg/NEU_Seg-main/images/test"
     out_dir = get_output_filenames(args)
 
-    net = UNet_less(n_channels=3, n_classes=4, bilinear=False)
+    if args.model_name == 'UNet_More_Less':
+        net = UNet_More_Less(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
+    elif args.model_name == 'UNet_less':
+        net = UNet_less(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
+    elif args.model_name == 'UNetInception':
+        net = UNetInception(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
+    else:
+        raise ValueError(f'Unknown model name: {args.model_name}')
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     logging.info(f'Loading model {args.model}')

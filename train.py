@@ -198,6 +198,7 @@ def get_args():
     parser.add_argument('--amp', action='store_true', default=False, help='Use mixed precision')
     parser.add_argument('--bilinear', action='store_true', default=False, help='Use bilinear upsampling')
     parser.add_argument('--classes', '-c', type=int, default=4, help='Number of classes')
+    parser.add_argument('--model', '-m', type=str, default='UNet_less', help='Model name')
 
     return parser.parse_args()
 
@@ -211,7 +212,14 @@ if __name__ == '__main__':
     # n_channels=3 for RGB images
     # n_classes is the number of probabilities you want to get per pixel
     # model = UNet(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
-    model = UNet_less(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
+    if args.model == 'UNet_More_Less':
+        model = UNet_More_Less(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
+    elif args.model == 'UNet_less':
+        model = UNet_less(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
+    elif args.model == 'UNetInception':
+        model = UNetInception(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
+    else:
+        raise ValueError(f'Unknown model name: {args.model}')
     logger.info(f'Network: {model.__class__.__name__}')
     model = model.to(memory_format=torch.channels_last)
 
