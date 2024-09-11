@@ -44,7 +44,7 @@ def get_args():
                         help='Scale factor for the input images')
     parser.add_argument('--bilinear', action='store_true', default=False, help='Use bilinear upsampling')
     parser.add_argument('--classes', '-c', type=int, default=2, help='Number of classes')
-    parser.add_argument('--model-name', '-n', type=str, default='UNet_less', help='Model name')
+    parser.add_argument('--model-name', '-model_name', type=str, default='UNet_less', help='Model name')
 
     return parser.parse_args()
 
