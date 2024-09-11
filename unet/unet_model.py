@@ -138,7 +138,7 @@ class UNetInception(nn.Module):
         x = self.up4(x, x1)
         logits = self.outc(x)
         return logits
-    
+
 class UNetAttention(nn.Module):
     def __init__(self, n_channels, n_classes, bilinear=False, dropout_rate=0.5):
         super(UNetAttention, self).__init__()
@@ -146,20 +146,20 @@ class UNetAttention(nn.Module):
         self.n_classes = n_classes
         self.bilinear = bilinear
 
-        self.inc = DoubleConv(n_channels, 32)
-        self.down1 = Down(32, 64)
-        self.down2 = Down(64, 128)
-        self.down3 = Down(128, 256)
+        self.inc = DoubleConv(n_channels, 16)  # 减少通道数
+        self.down1 = Down(16, 32)  # 减少通道数
+        self.down2 = Down(32, 64)  # 减少通道数
+        self.down3 = Down(64, 128)  # 减少通道数
         factor = 2 if bilinear else 1
-        self.down4 = Down(256, 512 // factor)
-        self.up1 = Up(512, 256 // factor, bilinear)
-        self.att1 = AttentionBlock(F_g=256 // factor, F_l=256, F_out=128 // factor)
-        self.up2 = Up(256, 128 // factor, bilinear)
-        self.att2 = AttentionBlock(F_g=128 // factor, F_l=128, F_out=64 // factor)
-        self.up3 = Up(128, 64 // factor, bilinear)
-        self.att3 = AttentionBlock(F_g=64 // factor, F_l=64, F_out=32 // factor)
-        self.up4 = Up(64, 32, bilinear)
-        self.outc = OutConv(32, n_classes)
+        self.down4 = Down(128, 256 // factor)  # 减少通道数
+        self.up1 = Up(256, 128 // factor, bilinear)  # 减少通道数
+        self.att1 = AttentionBlock(F_g=128 // factor, F_l=128, F_out=64 // factor)  # 减少通道数
+        self.up2 = Up(128, 64 // factor, bilinear)  # 减少通道数
+        self.att2 = AttentionBlock(F_g=64 // factor, F_l=64, F_out=32 // factor)  # 减少通道数
+        self.up3 = Up(64, 32 // factor, bilinear)  # 减少通道数
+        self.att3 = AttentionBlock(F_g=32 // factor, F_l=32, F_out=16 // factor)  # 减少通道数
+        self.up4 = Up(32, 16, bilinear)  # 减少通道数
+        self.outc = OutConv(16, n_classes)  # 减少通道数
         
         # 添加 Dropout 层
         self.dropout = nn.Dropout(dropout_rate)
