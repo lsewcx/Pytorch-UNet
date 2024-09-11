@@ -5,7 +5,6 @@ import random
 import sys
 import torch
 import torch.amp
-import torch.amp
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.transforms as transforms
@@ -25,6 +24,13 @@ dir_img = Path('./NEU_Seg-main/images/training')
 dir_mask = Path('./NEU_Seg-main/annotations/training')
 dir_checkpoint = Path('./checkpoints/')
 
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+handler = logging.StreamHandler()
+handler.setLevel(logging.INFO)
+formatter = logging.Formatter('%(levelname)s: %(message)s')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
 def train_model(
         model,
@@ -63,7 +69,7 @@ def train_model(
              val_percent=val_percent, save_checkpoint=save_checkpoint, img_scale=img_scale, amp=amp)
     )
 
-    logging.info(f'''Starting training:
+    logger.info(f'''Starting training:
         Epochs:          {epochs}
         Batch size:      {batch_size}
         Learning rate:   {learning_rate}
@@ -79,7 +85,7 @@ def train_model(
     optimizer = optim.RMSprop(model.parameters(),
                               lr=learning_rate, weight_decay=weight_decay, momentum=momentum, foreach=True)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=2)  # goal: maximize Dice score
-    grad_scaler = torch.cuda.amp.GradScaler('cuda',enabled=amp)
+    grad_scaler = torch.cuda.amp.GradScaler(enabled=amp)
     criterion = nn.CrossEntropyLoss() if model.n_classes > 1 else nn.BCEWithLogitsLoss()
     global_step = 0
     best_val_score = float('-inf')
@@ -146,14 +152,14 @@ def train_model(
             val_score = evaluate(model, val_loader, device, amp)
             scheduler.step(val_score)
 
-            logging.info('Validation Dice score: {}'.format(val_score))
+            logger.info('Validation Dice score: {}'.format(val_score))
             if val_score > best_val_score:
                 best_val_score = val_score
-                logging.info(f'New best model with Dice score: {val_score}')
+                logger.info(f'New best model with Dice score: {val_score}')
                 Path(dir_checkpoint).mkdir(parents=True, exist_ok=True)
                 torch.save(model, 'best_model.pth')
                 torch.jit.save(torch.jit.script(model), 'best_model.pt')
-                logging.info('Best model saved!')
+                logger.info('Best model saved!')
             try:
                 experiment.log({
                     'learning rate': optimizer.param_groups[0]['lr'],
@@ -176,7 +182,7 @@ def train_model(
             # state_dict = model.state_dict()
             # state_dict['mask_values'] = dataset.mask_values
             # torch.save(state_dict, str(dir_checkpoint / 'checkpoint_epoch{}.pth'.format(epoch)))
-            logging.info(f'Checkpoint {epoch} saved!')
+            logger.info(f'Checkpoint {epoch} saved!')
 
 
 def get_args():
@@ -199,19 +205,17 @@ def get_args():
 if __name__ == '__main__':
     args = get_args()
 
-    logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    logging.info(f'Using device {device}')
-
+    logger.info(f'Using device {torch.device("cuda" if torch.cuda.is_available() else "cpu")}')
     # Change here to adapt to your data
     # n_channels=3 for RGB images
     # n_classes is the number of probabilities you want to get per pixel
     # model = UNet(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
     model = UNet_More_Less(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
-    logging.info(f'Network: {model.__class__.__name__}')
+    logger.info(f'Network: {model.__class__.__name__}')
     model = model.to(memory_format=torch.channels_last)
 
-    logging.info(f'Network:\n'
+    logger.info(f'Network:\n'
                  f'\t{model.n_channels} input channels\n'
                  f'\t{model.n_classes} output channels (classes)\n'
                  f'\t{"Bilinear" if model.bilinear else "Transposed conv"} upscaling')
@@ -220,7 +224,7 @@ if __name__ == '__main__':
         state_dict = torch.load(args.load, map_location=device)
         del state_dict['mask_values']
         model.load_state_dict(state_dict)
-        logging.info(f'Model loaded from {args.load}')
+        logger.info(f'Model loaded from {args.load}')
 
     model.to(device=device)
     try:
@@ -235,7 +239,7 @@ if __name__ == '__main__':
             amp=args.amp
         )
     except torch.cuda.OutOfMemoryError:
-        logging.error('Detected OutOfMemoryError! '
+        logger.error('Detected OutOfMemoryError! '
                       'Enabling checkpointing to reduce memory usage, but this slows down training. '
                       'Consider enabling AMP (--amp) for fast and memory efficient training')
         torch.cuda.empty_cache()
