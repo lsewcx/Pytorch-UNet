@@ -28,10 +28,9 @@ transform = A.Compose([
         A.GaussNoise(p=0.2),  # 高斯噪声
         A.ISONoise(p=0.2),  # ISO噪声
     ], p=0.2),
-    A.HueSaturationValue(p=0.3),  # 随机HSV变换
     A.RandomBrightnessContrast(p=0.3),  # 随机亮度和对比度
     A.Resize(height=256, width=256),  # 确保图像和掩码的尺寸一致
-], is_check_shapes=False)
+], additional_targets={'mask': 'mask'},is_check_shapes=False)
 
 
 def load_image(filename):
@@ -127,8 +126,9 @@ class BasicDataset(Dataset):
         img = self.preprocess(self.mask_values, img, self.scale, is_mask=False)
         mask = self.preprocess(self.mask_values, mask, self.scale, is_mask=True)
 
-        augmented = transform(image=img)
+        augmented = transform(image=img, mask=mask)
         img = augmented['image']
+        mask = augmented['mask']
 
         return {
             'image': torch.as_tensor(img.copy()).float().contiguous(),
