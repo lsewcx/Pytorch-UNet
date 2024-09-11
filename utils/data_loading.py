@@ -126,6 +126,9 @@ class BasicDataset(Dataset):
         img = self.preprocess(self.mask_values, img, self.scale, is_mask=False)
         mask = self.preprocess(self.mask_values, mask, self.scale, is_mask=True)
 
+        img = img.astype(np.uint8)
+        mask = mask.astype(np.uint8)
+        
         augmented = transform(image=img, mask=mask)
         img = augmented['image']
         mask = augmented['mask']
