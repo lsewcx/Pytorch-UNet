@@ -140,161 +140,46 @@ class UNetInception(nn.Module):
         return logits
     
 class UNetAttention(nn.Module):
-    def __init__(self, n_channels=3, n_classes=4, pretrained=None, bilinear=False):
+    def __init__(self, n_channels, n_classes, bilinear=False, dropout_rate=0.5):
         super(UNetAttention, self).__init__()
-        self.encoder = Encoder(n_channels, [64, 128, 256, 512])
-        filters = [64, 128, 256, 512, 1024]
-        self.up5 = UpConv(ch_in=filters[4], ch_out=filters[3])
-        self.att5 = AttentionBlock(F_g=filters[3], F_l=filters[3], F_out=filters[2])
-        self.up_conv5 = ConvBlock(ch_in=filters[4], ch_out=filters[3])
+        self.n_channels = n_channels
+        self.n_classes = n_classes
+        self.bilinear = bilinear
 
-        self.up4 = UpConv(ch_in=filters[3], ch_out=filters[2])
-        self.att4 = AttentionBlock(F_g=filters[2], F_l=filters[2], F_out=filters[1])
-        self.up_conv4 = ConvBlock(ch_in=filters[3], ch_out=filters[2])
-
-        self.up3 = UpConv(ch_in=filters[2], ch_out=filters[1])
-        self.att3 = AttentionBlock(F_g=filters[1], F_l=filters[1], F_out=filters[0])
-        self.up_conv3 = ConvBlock(ch_in=filters[2], ch_out=filters[1])
-
-        self.up2 = UpConv(ch_in=filters[1], ch_out=filters[0])
-        self.att2 = AttentionBlock(F_g=filters[0], F_l=filters[0], F_out=filters[0] // 2)
-        self.up_conv2 = ConvBlock(ch_in=filters[1], ch_out=filters[0])
-
-        self.conv_1x1 = nn.Conv2d(filters[0], n_classes, kernel_size=1, stride=1, padding=0)
-        self.pretrained = pretrained
-        self.init_weight()
-
-    def forward(self, x):
-        x5, (x1, x2, x3, x4) = self.encoder(x)
-        d5 = self.up5(x5)
-        x4 = self.att5(g=d5, x=x4)
-        d5 = torch.cat([x4, d5], dim=1)
-        d5 = self.up_conv5(d5)
-
-        d4 = self.up4(d5)
-        x3 = self.att4(g=d4, x=x3)
-        d4 = F.interpolate(d4, size=x3.size()[2:], mode='bilinear', align_corners=True)  # 调整尺寸
-        d4 = torch.cat((x3, d4), dim=1)
-        d4 = self.up_conv4(d4)
-
-        d3 = self.up3(d4)
-        x2 = self.att3(g=d3, x=x2)
-        d3 = F.interpolate(d3, size=x2.size()[2:], mode='bilinear', align_corners=True)  # 调整尺寸
-        d3 = torch.cat((x2, d3), dim=1)
-        d3 = self.up_conv3(d3)
-
-        d2 = self.up2(d3)
-        x1 = self.att2(g=d2, x=x1)
-        d2 = F.interpolate(d2, size=x1.size()[2:], mode='bilinear', align_corners=True)  # 调整尺寸
-        d2 = torch.cat((x1, d2), dim=1)
-        d2 = self.up_conv2(d2)
-
-        logit = self.conv_1x1(d2)
-        logit_list = [logit]
-        return logit_list
-
-    def init_weight(self):
-        if self.pretrained is not None:
-            self.load_state_dict(torch.load(self.pretrained))
-
-
-class AttentionBlock(nn.Module):
-    def __init__(self, F_g, F_l, F_out):
-        super(AttentionBlock, self).__init__()
-        self.W_g = nn.Sequential(
-            nn.Conv2d(F_g, F_out, kernel_size=1, stride=1, padding=0),
-            nn.BatchNorm2d(F_out)
-        )
-
-        self.W_x = nn.Sequential(
-            nn.Conv2d(F_l, F_out, kernel_size=1, stride=1, padding=0),
-            nn.BatchNorm2d(F_out)
-        )
-
-        self.psi = nn.Sequential(
-            nn.Conv2d(F_out, 1, kernel_size=1, stride=1, padding=0),
-            nn.BatchNorm2d(1),
-            nn.Sigmoid()
-        )
-
-        self.relu = nn.ReLU()
-
-    def forward(self, g, x):
-        g1 = self.W_g(g)
-        x1 = self.W_x(x)
+        self.inc = DoubleConv(n_channels, 32)
+        self.down1 = Down(32, 64)
+        self.down2 = Down(64, 128)
+        self.down3 = Down(128, 256)
+        factor = 2 if bilinear else 1
+        self.down4 = Down(256, 512 // factor)
+        self.up1 = Up(512, 256 // factor, bilinear)
+        self.att1 = AttentionBlock(F_g=256 // factor, F_l=256, F_out=128 // factor)
+        self.up2 = Up(256, 128 // factor, bilinear)
+        self.att2 = AttentionBlock(F_g=128 // factor, F_l=128, F_out=64 // factor)
+        self.up3 = Up(128, 64 // factor, bilinear)
+        self.att3 = AttentionBlock(F_g=64 // factor, F_l=64, F_out=32 // factor)
+        self.up4 = Up(64, 32, bilinear)
+        self.outc = OutConv(32, n_classes)
         
-        # 确保 g1 和 x1 的尺寸一致
-        if g1.size() != x1.size():
-            g1 = F.interpolate(g1, size=x1.size()[2:], mode='bilinear', align_corners=True)
-        
-        psi = self.relu(g1 + x1)
-        psi = self.psi(psi)
-        res = x * psi
-        return res
-
-
-class UpConv(nn.Module):
-    def __init__(self, ch_in, ch_out):
-        super(UpConv, self).__init__()
-        self.up = nn.Sequential(
-            nn.Upsample(scale_factor=2, mode="bilinear", align_corners=True),
-            nn.Conv2d(ch_in, ch_out, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(ch_out),
-            nn.ReLU()
-        )
+        # 添加 Dropout 层
+        self.dropout = nn.Dropout(dropout_rate)
 
     def forward(self, x):
-        return self.up(x)
+        x1 = self.inc(x)
+        x2 = self.down1(x1)
+        x3 = self.down2(x2)
+        x4 = self.down3(x3)
+        x5 = self.down4(x4)
+        x5 = self.dropout(x5)  # 在下采样的最后一层添加 Dropout
+        x = self.up1(x5, x4)
+        x = self.att1(g=x, x=x4)  # 添加注意力机制
+        x = self.dropout(x)  # 在上采样层之间添加 Dropout
+        x = self.up2(x, x3)
+        x = self.att2(g=x, x=x3)  # 添加注意力机制
+        x = self.up3(x, x2)
+        x = self.att3(g=x, x=x2)  # 添加注意力机制
+        x = self.up4(x, x1)
+        logits = self.outc(x)
+        return logits
 
 
-class Encoder(nn.Module):
-    def __init__(self, input_channels, filters):
-        super(Encoder, self).__init__()
-        self.double_conv = nn.Sequential(
-            nn.Conv2d(input_channels, 64, kernel_size=3, padding=1),
-            nn.BatchNorm2d(64),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(64, 64, kernel_size=3, padding=1),
-            nn.BatchNorm2d(64),
-            nn.ReLU(inplace=True)
-        )
-        down_channels = filters
-        self.down_sample_list = nn.ModuleList([
-            self.down_sampling(channel, channel * 2)
-            for channel in down_channels
-        ])
-
-    def down_sampling(self, in_channels, out_channels):
-        modules = []
-        modules.append(nn.MaxPool2d(kernel_size=2, stride=2))
-        modules.append(nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1))
-        modules.append(nn.BatchNorm2d(out_channels))
-        modules.append(nn.ReLU(inplace=True))
-        modules.append(nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1))
-        modules.append(nn.BatchNorm2d(out_channels))
-        modules.append(nn.ReLU(inplace=True))
-        return nn.Sequential(*modules)
-
-    def forward(self, x):
-        short_cuts = []
-        x = self.double_conv(x)
-        for down_sample in self.down_sample_list:
-            short_cuts.append(x)
-            x = down_sample(x)
-        return x, short_cuts
-
-
-class ConvBlock(nn.Module):
-    def __init__(self, ch_in, ch_out):
-        super(ConvBlock, self).__init__()
-        self.conv = nn.Sequential(
-            nn.Conv2d(ch_in, ch_out, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(ch_out),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(ch_out, ch_out, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(ch_out),
-            nn.ReLU(inplace=True)
-        )
-
-    def forward(self, x):
-        return self.conv(x)
