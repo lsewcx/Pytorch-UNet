@@ -31,15 +31,16 @@ class UpSampling(nn.Module):
 
     def forward(self, high_feature, low_feature1=None, low_feature2=None, low_feature3=None, low_feature4=None):
         x = self.up(high_feature)
-        low_features = []
-        for f in [low_feature1, low_feature2, low_feature3, low_feature4]:
+        low_features = torch.zeros(4, dtype=torch.float32)
+        for i, f in enumerate([low_feature1, low_feature2, low_feature3, low_feature4]):
             if f is not None:
-                low_features.append(f)
+                low_features[i] = f
         for i in range(len(low_features)):
-            diffY = low_features[i].size()[2] - x.size()[2]
-            diffX = low_features[i].size()[3] - x.size()[3]
-            x = F.pad(x, [diffX // 2, diffX - diffX // 2,
-                          diffY // 2, diffY - diffY // 2])
+            if low_features[i] is not None:
+                diffY = low_features[i].size()[2] - x.size()[2]
+                diffX = low_features[i].size()[3] - x.size()[3]
+                x = F.pad(x, [diffX // 2, diffX - diffX // 2,
+                              diffY // 2, diffY - diffY // 2])
         x = torch.cat([x, *low_features], dim=1)
         return self.conv(x)
 
