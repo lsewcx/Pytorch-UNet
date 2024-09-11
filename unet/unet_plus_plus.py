@@ -40,6 +40,8 @@ class UNetPlusPlus(nn.Module):
     def __init__(self, n_classes,  n_channels=3, use_deconv=False, align_corners=False, is_ds=True):
         super(UNetPlusPlus, self).__init__()
         self.is_ds = is_ds
+        self.n_channels = n_channels
+        self.n_classes = n_classes
         channels = [32, 64, 128, 256, 512]
         
         self.conv0_0 = DoubleConv(n_channels, channels[0])
