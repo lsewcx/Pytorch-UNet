@@ -140,28 +140,8 @@ class UNetInception(nn.Module):
         return logits
     
 class UNetAttention(nn.Module):
-    """
-    The Attention-UNet implementation based on PyTorch.
-    As mentioned in the original paper, author proposes a novel attention gate (AG)
-    that automatically learns to focus on target structures of varying shapes and sizes.
-    Models trained with AGs implicitly learn to suppress irrelevant regions in an input image while
-    highlighting salient features useful for a specific task.
-
-    The original article refers to
-    Oktay, O, et, al. "Attention u-net: Learning where to look for the pancreas."
-    (https://arxiv.org/pdf/1804.03999.pdf).
-
-    Args:
-        num_classes (int): The unique number of target classes.
-        in_channels (int, optional): The channels of input image. Default: 3.
-        pretrained (str, optional): The path or url of pretrained model. Default: None.
-    """
-
     def __init__(self, n_channels=3, n_classes=4, pretrained=None, bilinear=False):
         super(UNetAttention, self).__init__()
-        self.n_channels = n_channels
-        self.n_classes = n_classes
-        self.bilinear = bilinear
         self.encoder = Encoder(n_channels, [64, 128, 256, 512])
         filters = [64, 128, 256, 512, 1024]
         self.up5 = UpConv(ch_in=filters[4], ch_out=filters[3])
@@ -193,16 +173,19 @@ class UNetAttention(nn.Module):
 
         d4 = self.up4(d5)
         x3 = self.att4(g=d4, x=x3)
+        d4 = F.interpolate(d4, size=x3.size()[2:], mode='bilinear', align_corners=True)  # 调整尺寸
         d4 = torch.cat((x3, d4), dim=1)
         d4 = self.up_conv4(d4)
 
         d3 = self.up3(d4)
         x2 = self.att3(g=d3, x=x2)
+        d3 = F.interpolate(d3, size=x2.size()[2:], mode='bilinear', align_corners=True)  # 调整尺寸
         d3 = torch.cat((x2, d3), dim=1)
         d3 = self.up_conv3(d3)
 
         d2 = self.up2(d3)
         x1 = self.att2(g=d2, x=x1)
+        d2 = F.interpolate(d2, size=x1.size()[2:], mode='bilinear', align_corners=True)  # 调整尺寸
         d2 = torch.cat((x1, d2), dim=1)
         d2 = self.up_conv2(d2)
 
