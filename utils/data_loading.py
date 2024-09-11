@@ -26,8 +26,7 @@ transform = A.Compose([
         A.Blur(blur_limit=3, p=0.1),  # 使用随机大小的内核模糊输入图像。
     ], p=0.2),
     A.RandomBrightnessContrast(p=0.2),  # 随机明亮对比度
-    A.Resize(height=256, width=256),  # 确保图像和掩码的尺寸一致
-])
+], is_check_shapes=False)
 
 
 def load_image(filename):
