@@ -131,9 +131,10 @@ class BasicDataset(Dataset):
         mask = augmented['mask']
 
         return {
-            'image': img.float().contiguous(),
-            'mask': mask.long().contiguous()
+            'image': torch.tensor(img).float().contiguous(),
+            'mask': torch.tensor(mask).long().contiguous()
         }
+
 
     # def __getitem__(self, idx):
     #     name = self.ids[idx]
