@@ -2,8 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from torch.nn.modules.batchnorm import _BatchNorm
-
 class DoubleConv(nn.Module):
     def __init__(self, in_channels, out_channels, mid_channels=None):
         super(DoubleConv, self).__init__()
@@ -33,11 +31,16 @@ class UpSampling(nn.Module):
 
     def forward(self, high_feature, *low_features):
         x = self.up(high_feature)
+        for i in range(len(low_features)):
+            diffY = low_features[i].size()[2] - x.size()[2]
+            diffX = low_features[i].size()[3] - x.size()[3]
+            x = F.pad(x, [diffX // 2, diffX - diffX // 2,
+                          diffY // 2, diffY - diffY // 2])
         x = torch.cat([x, *low_features], dim=1)
         return self.conv(x)
 
 class UNetPlusPlus(nn.Module):
-    def __init__(self, n_classes,  n_channels=3, use_deconv=False, align_corners=False, is_ds=True):
+    def __init__(self, n_classes, n_channels=3, use_deconv=False, align_corners=False, is_ds=True):
         super(UNetPlusPlus, self).__init__()
         self.is_ds = is_ds
         self.n_channels = n_channels
