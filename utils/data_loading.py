@@ -121,7 +121,9 @@ class BasicDataset(Dataset):
 
         assert img.size == mask.size, \
             f'Image and mask {name} should be the same size, but are {img.size} and {mask.size}'
-        
+        img = np.array(img)
+        mask = np.array(mask)
+
         augmented = transform(image=img, mask=mask)
         img = augmented['image']
         mask = augmented['mask']
