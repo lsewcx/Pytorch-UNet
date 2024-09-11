@@ -17,15 +17,20 @@ from albumentations.pytorch import ToTensorV2
 transform = A.Compose([
     A.HorizontalFlip(p=0.5),
     A.VerticalFlip(p=0.5),
+    A.RandomRotate90(p=0.5),
     A.OneOf([
-        A.GaussNoise(),  # 将高斯噪声应用于输入图像。
-    ], p=0.2),  # 应用选定变换的概率
+        A.ElasticTransform(p=0.5),  # 弹性变换
+        A.GridDistortion(p=0.5),  # 网格畸变
+        A.OpticalDistortion(p=0.5),  # 光学畸变
+    ], p=0.3),
+    A.ShiftScaleRotate(shift_limit=0.0625, scale_limit=0.1, rotate_limit=45, p=0.5),  # 平移、缩放、旋转
     A.OneOf([
-        A.MotionBlur(p=0.2),  # 使用随机大小的内核将运动模糊应用于输入图像。
-        A.MedianBlur(blur_limit=3, p=0.1),  # 中值滤波
-        A.Blur(blur_limit=3, p=0.1),  # 使用随机大小的内核模糊输入图像。
+        A.GaussNoise(p=0.2),  # 高斯噪声
+        A.ISONoise(p=0.2),  # ISO噪声
     ], p=0.2),
-    A.RandomBrightnessContrast(p=0.2),  # 随机明亮对比度
+    A.HueSaturationValue(p=0.3),  # 随机HSV变换
+    A.RandomBrightnessContrast(p=0.3),  # 随机亮度和对比度
+    A.Resize(height=256, width=256),  # 确保图像和掩码的尺寸一致
 ], is_check_shapes=False)
 
 
@@ -124,7 +129,7 @@ class BasicDataset(Dataset):
 
         img = img.astype(np.uint8)
         mask = mask.astype(np.uint8)
-        
+
         augmented = transform(image=img, mask=mask)
         img = augmented['image']
         mask = augmented['mask']
