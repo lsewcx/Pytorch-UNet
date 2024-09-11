@@ -57,7 +57,7 @@ if __name__ == '__main__':
     args = get_args()
     logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
-    in_dir = "/kaggle/input/neuseg/NEU_Seg-main/images/test"
+    in_dir = "/kaggle/working/Pytorch-UNet/NEU_Seg-main/images/test"
     out_dir = get_output_filenames(args)
 
     if args.model_name == 'UNet_More_Less':
