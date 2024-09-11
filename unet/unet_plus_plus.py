@@ -31,7 +31,10 @@ class UpSampling(nn.Module):
 
     def forward(self, high_feature, low_feature1=None, low_feature2=None, low_feature3=None, low_feature4=None):
         x = self.up(high_feature)
-        low_features = [f for f in [low_feature1, low_feature2, low_feature3, low_feature4] if f is not None]
+        low_features = []
+        for f in [low_feature1, low_feature2, low_feature3, low_feature4]:
+            if f is not None:
+                low_features.append(f)
         for i in range(len(low_features)):
             diffY = low_features[i].size()[2] - x.size()[2]
             diffX = low_features[i].size()[3] - x.size()[3]
