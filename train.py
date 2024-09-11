@@ -218,6 +218,8 @@ if __name__ == '__main__':
         model = UNet_less(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
     elif args.model == 'UNetInception':
         model = UNetInception(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
+    elif args.model == 'UNetAttention':
+        model = UNetAttention(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
     else:
         raise ValueError(f'Unknown model name: {args.model}')
     logger.info(f'Network: {model.__class__.__name__}')

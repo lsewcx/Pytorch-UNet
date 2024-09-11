@@ -73,7 +73,7 @@ def seg(pred_dir, gt_dir, num_classes):
 
 if __name__ == "__main__":
     # 训练好的模型的路径
-    model_path = 'best_model.pt'
+    model_path = 'best_model.pth'
 
     score = 0
     ###计算模型参数分数###
