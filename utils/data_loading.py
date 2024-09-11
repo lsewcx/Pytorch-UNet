@@ -11,26 +11,6 @@ from os.path import splitext, isfile, join
 from pathlib import Path
 from torch.utils.data import Dataset
 from tqdm import tqdm
-import albumentations as A
-from albumentations.pytorch import ToTensorV2
-
-transform = A.Compose([
-    A.HorizontalFlip(p=0.5),
-    A.VerticalFlip(p=0.5),
-    A.RandomRotate90(p=0.5),
-    A.OneOf([
-        A.ElasticTransform(p=0.5),  # 弹性变换
-        A.GridDistortion(p=0.5),  # 网格畸变
-        A.OpticalDistortion(p=0.5),  # 光学畸变
-    ], p=0.3),
-    A.ShiftScaleRotate(shift_limit=0.0625, scale_limit=0.1, rotate_limit=45, p=0.5),  # 平移、缩放、旋转
-    A.OneOf([
-        A.GaussNoise(p=0.2),  # 高斯噪声
-        A.ISONoise(p=0.2),  # ISO噪声
-    ], p=0.2),
-    A.RandomBrightnessContrast(p=0.3),  # 随机亮度和对比度
-], additional_targets={'mask': 'mask'},is_check_shapes=False)
-
 
 def load_image(filename):
     ext = splitext(filename)[1]
@@ -108,6 +88,8 @@ class BasicDataset(Dataset):
                 img = img / 255.0
 
             return img
+
+
     def __getitem__(self, idx):
         name = self.ids[idx]
         mask_file = list(self.mask_dir.glob(name + self.mask_suffix + '.*'))
@@ -120,42 +102,14 @@ class BasicDataset(Dataset):
 
         assert img.size == mask.size, \
             f'Image and mask {name} should be the same size, but are {img.size} and {mask.size}'
-        
-        # 将图像和掩码转换为 NumPy 数组
-        img = np.array(img)
-        mask = np.array(mask)
 
-        # 应用数据增强，同时传递图像和掩码
-        augmented = transform(image=img, mask=mask)
-        img = augmented['image']
-        mask = augmented['mask']
+        img = self.preprocess(self.mask_values, img, self.scale, is_mask=False)
+        mask = self.preprocess(self.mask_values, mask, self.scale, is_mask=True)
 
         return {
-            'image': torch.tensor(img).float().contiguous(),
-            'mask': torch.tensor(mask).long().contiguous()
+            'image': torch.as_tensor(img.copy()).float().contiguous(),
+            'mask': torch.as_tensor(mask.copy()).long().contiguous()
         }
-
-
-    # def __getitem__(self, idx):
-    #     name = self.ids[idx]
-    #     mask_file = list(self.mask_dir.glob(name + self.mask_suffix + '.*'))
-    #     img_file = list(self.images_dir.glob(name + '.*'))
-
-    #     assert len(img_file) == 1, f'Either no image or multiple images found for the ID {name}: {img_file}'
-    #     assert len(mask_file) == 1, f'Either no mask or multiple masks found for the ID {name}: {mask_file}'
-    #     mask = load_image(mask_file[0])
-    #     img = load_image(img_file[0])
-
-    #     assert img.size == mask.size, \
-    #         f'Image and mask {name} should be the same size, but are {img.size} and {mask.size}'
-
-    #     img = self.preprocess(self.mask_values, img, self.scale, is_mask=False)
-    #     mask = self.preprocess(self.mask_values, mask, self.scale, is_mask=True)
-
-    #     return {
-    #         'image': torch.as_tensor(img.copy()).float().contiguous(),
-    #         'mask': torch.as_tensor(mask.copy()).long().contiguous()
-    #     }
 
 
 class CarvanaDataset(BasicDataset):
