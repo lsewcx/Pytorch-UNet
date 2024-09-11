@@ -37,12 +37,12 @@ class UpSampling(nn.Module):
         return self.conv(x)
 
 class UNetPlusPlus(nn.Module):
-    def __init__(self, num_classes, in_channels=3, use_deconv=False, align_corners=False, is_ds=True):
+    def __init__(self, n_classes,  n_channels=3, use_deconv=False, align_corners=False, is_ds=True):
         super(UNetPlusPlus, self).__init__()
         self.is_ds = is_ds
         channels = [32, 64, 128, 256, 512]
         
-        self.conv0_0 = DoubleConv(in_channels, channels[0])
+        self.conv0_0 = DoubleConv(n_channels, channels[0])
         self.conv1_0 = DoubleConv(channels[0], channels[1])
         self.conv2_0 = DoubleConv(channels[1], channels[2])
         self.conv3_0 = DoubleConv(channels[2], channels[3])
@@ -62,10 +62,10 @@ class UNetPlusPlus(nn.Module):
 
         self.up_cat0_4 = UpSampling(channels[1], channels[0], n_cat=5, use_deconv=use_deconv, align_corners=align_corners)
 
-        self.out_1 = nn.Conv2d(channels[0], num_classes, 1)
-        self.out_2 = nn.Conv2d(channels[0], num_classes, 1)
-        self.out_3 = nn.Conv2d(channels[0], num_classes, 1)
-        self.out_4 = nn.Conv2d(channels[0], num_classes, 1)
+        self.out_1 = nn.Conv2d(channels[0], n_classes, 1)
+        self.out_2 = nn.Conv2d(channels[0], n_classes, 1)
+        self.out_3 = nn.Conv2d(channels[0], n_classes, 1)
+        self.out_4 = nn.Conv2d(channels[0], n_classes, 1)
 
     def forward(self, inputs):
         # 0 down

@@ -69,7 +69,7 @@ if __name__ == '__main__':
     elif args.model_name == 'UNetAttention':
         net = UNetAttention(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
     elif args.model_name == 'UNet_plusplus':
-        net = UNetPlusPlus(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
+        net = UNetPlusPlus(n_channels=3, n_classes=args.classes,use_deconv=True, align_corners=False, is_ds=True)
     else:
         raise ValueError(f'Unknown model name: {args.model_name}')
 
