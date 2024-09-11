@@ -157,9 +157,9 @@ class UNetAttention(nn.Module):
         pretrained (str, optional): The path or url of pretrained model. Default: None.
     """
 
-    def __init__(self,in_channels=3,  num_classes=4, pretrained=None):
+    def __init__(self, n_channels=3, n_classes=4, pretrained=None, bilinear=False):
         super(UNetAttention, self).__init__()
-        self.encoder = Encoder(in_channels, [64, 128, 256, 512])
+        self.encoder = Encoder(n_channels, [64, 128, 256, 512])
         filters = [64, 128, 256, 512, 1024]
         self.up5 = UpConv(ch_in=filters[4], ch_out=filters[3])
         self.att5 = AttentionBlock(F_g=filters[3], F_l=filters[3], F_out=filters[2])
@@ -177,7 +177,7 @@ class UNetAttention(nn.Module):
         self.att2 = AttentionBlock(F_g=filters[0], F_l=filters[0], F_out=filters[0] // 2)
         self.up_conv2 = ConvBlock(ch_in=filters[1], ch_out=filters[0])
 
-        self.conv_1x1 = nn.Conv2d(filters[0], num_classes, kernel_size=1, stride=1, padding=0)
+        self.conv_1x1 = nn.Conv2d(filters[0], n_classes, kernel_size=1, stride=1, padding=0)
         self.pretrained = pretrained
         self.init_weight()
 

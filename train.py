@@ -219,11 +219,16 @@ if __name__ == '__main__':
     elif args.model == 'UNetInception':
         model = UNetInception(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
     elif args.model == 'UNetAttention':
-        model = UNetAttention(in_channels=3, num_classes=args.classes)
+        model = UNetAttention(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
     else:
         raise ValueError(f'Unknown model name: {args.model}')
     logger.info(f'Network: {model.__class__.__name__}')
     model = model.to(memory_format=torch.channels_last)
+
+    logger.info(f'Network:\n'
+                 f'\t{model.n_channels} input channels\n'
+                 f'\t{model.n_classes} output channels (classes)\n'
+                 f'\t{"Bilinear" if model.bilinear else "Transposed conv"} upscaling')
 
     if args.load:
         state_dict = torch.load(args.load, map_location=device)
