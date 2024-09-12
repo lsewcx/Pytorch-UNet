@@ -87,7 +87,7 @@ class UNet_More_Less(nn.Module):
 把参数量缩的更小了但是添加了inception v2模块
 '''
 class UNetInception(nn.Module):
-    def __init__(self, n_channels, n_classes, bilinear=False, dropout_rate=0.4):
+    def __init__(self, n_channels, n_classes, bilinear=False):
         super(UNetInception, self).__init__()
         self.n_channels = n_channels
         self.n_classes = n_classes
@@ -112,9 +112,6 @@ class UNetInception(nn.Module):
         self.res4 = nn.Conv2d(64, 64 // factor, kernel_size=1, padding=0, stride=1)  # 原来是128
         self.res5 = nn.Conv2d(128, 128 // factor, kernel_size=1, padding=0, stride=1)  # 原来是256
 
-        # 添加 Dropout 层
-        self.dropout = nn.Dropout(dropout_rate)
-
     def forward(self, x):
         # 下采样部分
         x1 = self.inc(x)
@@ -128,11 +125,10 @@ class UNetInception(nn.Module):
         x4 = self.down3(x3 + x3_res)
         
         x4_res = self.res4(x4)  # 残差连接
-        x5 = self.dropout(self.down4(x4 + x4_res))  # 在下采样的最后一层添加 Dropout
+        x5 = self.down4(x4 + x4_res)  # 在下采样的最后一层去掉 Dropout
         
         # 上采样部分
         x = self.up1(x5, x4)
-        x = self.dropout(x)  # 在上采样层之间添加 Dropout
         x = self.up2(x, x3)
         x = self.up3(x, x2)
         x = self.up4(x, x1)
