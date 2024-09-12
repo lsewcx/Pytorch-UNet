@@ -87,7 +87,7 @@ class UNet_More_Less(nn.Module):
 把参数量缩的更小了但是添加了inception v2模块
 '''
 class UNetInception(nn.Module):
-    def __init__(self, n_channels, n_classes, bilinear=False, dropout_rate=0.3):
+    def __init__(self, n_channels, n_classes, bilinear=False, dropout_rate=0.6):
         super(UNetInception, self).__init__()
         self.n_channels = n_channels
         self.n_classes = n_classes
