@@ -222,6 +222,8 @@ if __name__ == '__main__':
         model = UNetAttention(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
     elif args.model == 'UNet_plusplus':
         model = UNetPlusPlus(n_channels=3, n_classes=args.classes,use_deconv=True, align_corners=False, is_ds=True)
+    elif args.model == 'UNetPlusPlusInception':
+        model = UNetPlusPlusInception(n_classes=args.classes, n_channels=3, use_deconv=True, align_corners=False, is_ds=True)
     else:
         raise ValueError(f'Unknown model name: {args.model}')
     logger.info(f'Network: {model.__class__.__name__}')
