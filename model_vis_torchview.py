@@ -13,3 +13,4 @@ graph = draw_graph(model, input_size=(1, 3, 244, 244))
 
 # 保存计算图为 PDF 文件
 graph.visual_graph.render('unet_inception_model_torchview', format='pdf')
+graph.visual_graph.render('unet_inception_model_torchview', format='png')
