@@ -1,7 +1,5 @@
 import torch
 from torchviz import make_dot
-import sys
-sys.path.append('../')
 from unet import UNetInception 
 # 创建模型实例
 model = UNetInception(n_channels=3, n_classes=4, bilinear=False)
