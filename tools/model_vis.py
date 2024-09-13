@@ -1,7 +1,8 @@
 import torch
 from torchviz import make_dot
-from ..unet import UNetInception  # 假设你的模型定义在 unet_model.py 文件中
-
+import sys
+sys.path.append('../')
+from unet import UNetInception 
 # 创建模型实例
 model = UNetInception(n_channels=3, n_classes=4, bilinear=False)
 
