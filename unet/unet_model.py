@@ -1,7 +1,8 @@
 """ Full assembly of the parts to form the complete network """
 
 from .unet_parts import *
-import json
+from torchvision.models import resnet50, ResNet50_Weights
+import torchvision.models as models
 
 class UNet_Attention(nn.Module):
     def __init__(self, n_channels, n_classes, bilinear=False, dropout_rate=0.5):
@@ -67,44 +68,18 @@ class UNet_less(nn.Module):
         self.dropout = nn.Dropout(dropout_rate)
 
     def forward(self, x):
-        layer_outputs = {}  # 用于存储每一层的输出
-
         x1 = self.inc(x)
-        layer_outputs['x1'] = x1.detach().cpu().numpy().tolist()
-
         x2 = self.down1(x1)
-        layer_outputs['x2'] = x2.detach().cpu().numpy().tolist()
-
         x3 = self.down2(x2)
-        layer_outputs['x3'] = x3.detach().cpu().numpy().tolist()
-
         x4 = self.down3(x3)
-        layer_outputs['x4'] = x4.detach().cpu().numpy().tolist()
-
         x5 = self.down4(x4)
-        x5 = self.dropout(x5)
-        layer_outputs['x5'] = x5.detach().cpu().numpy().tolist()
-
+        x5 = self.dropout(x5)  # 在下采样的最后一层添加 Dropout
         x = self.up1(x5, x4)
-        layer_outputs['x_up1'] = x.detach().cpu().numpy().tolist()
-
         x = self.up2(x, x3)
-        layer_outputs['x_up2'] = x.detach().cpu().numpy().tolist()
-
         x = self.up3(x, x2)
-        layer_outputs['x_up3'] = x.detach().cpu().numpy().tolist()
-
         x = self.up4(x, x1)
-        x = self.dropout(x)
-        layer_outputs['x_up4'] = x.detach().cpu().numpy().tolist()
-
+        x = self.dropout(x)  # 在上采样层之间添加 Dropout
         logits = self.outc(x)
-        layer_outputs['logits'] = logits.detach().cpu().numpy().tolist()
-
-        # 将layer_outputs保存到JSON文件
-        with open('layer_outputs.json', 'w') as json_file:
-            json.dump(layer_outputs, json_file)
-
         return logits
     
 class UNet_More_Less(nn.Module):

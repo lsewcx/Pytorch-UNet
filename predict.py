@@ -8,6 +8,7 @@ from PIL import Image
 from torchvision import transforms
 from utils.data_loading import BasicDataset
 from unet import *
+import json
 from utils.utils import plot_img_and_mask
 
 def predict_img(net,
@@ -19,15 +20,25 @@ def predict_img(net,
     img = torch.from_numpy(BasicDataset.preprocess(None, full_img, scale_factor, is_mask=False))
     img = img.unsqueeze(0)
     img = img.to(device=device, dtype=torch.float32)
-
+    
+    layer_outputs = {}  # 用于存储每一层的输出
+        
     with torch.no_grad():
+        
+        x = img
+        for name,layer in net.named_children():
+            x = layer(x)
+            layer_outputs[name] = x.cpu().numpy().tolist()
         output = net(img).cpu()
         output = F.interpolate(output, (full_img.size[1], full_img.size[0]), mode='bilinear')
         if net.n_classes > 1:
             mask = output.argmax(dim=1)
         else:
             mask = torch.sigmoid(output) > out_threshold
-
+        
+        with open("layer-outputs.json",'w') as f:
+            f.write(json.dumps(layer_outputs))
+            
     return mask[0].long().squeeze().numpy()
 
 def get_args():
