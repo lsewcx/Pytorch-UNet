@@ -77,7 +77,6 @@ class UNet_less(nn.Module):
 
     def save_output(self, name):
         def hook(module, input, output):
-            print(f"Saving output of layer {name}")
             self.outputs[name] = output.detach().cpu().numpy().tolist()
         return hook
 
