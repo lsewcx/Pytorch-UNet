@@ -22,7 +22,7 @@ def predict_img(net: torch.nn.Module,
     img = img.to(device=device, dtype=torch.float32)
         
     with torch.no_grad():    
-        output = net(img, is_inference=True).cpu()
+        output = net(img).cpu()
         output = F.interpolate(output, (full_img.size[1], full_img.size[0]), mode='bilinear')
         if net.n_classes > 1:
             mask = output.argmax(dim=1)
