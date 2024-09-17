@@ -1,5 +1,6 @@
 """ Full assembly of the parts to form the complete network """
 
+import json
 from .unet_parts import *
 from torchvision.models import resnet50, ResNet50_Weights
 import torchvision.models as models
@@ -67,7 +68,19 @@ class UNet_less(nn.Module):
         # 添加 Dropout 层
         self.dropout = nn.Dropout(dropout_rate)
 
-    def forward(self, x):
+        # 创建一个字典来保存每一层的输出
+        self.outputs = {}
+
+        # 为每一层注册一个钩子函数
+        for name, module in self.named_modules():
+            module.register_forward_hook(self.save_output(name))
+
+    def save_output(self, name):
+        def hook(module, input, output):
+            self.outputs[name] = output.detach().cpu().numpy().tolist()
+        return hook
+
+    def forward(self, x, is_inference=False):
         x1 = self.inc(x)
         x2 = self.down1(x1)
         x3 = self.down2(x2)
@@ -80,6 +93,12 @@ class UNet_less(nn.Module):
         x = self.up4(x, x1)
         x = self.dropout(x)  # 在上采样层之间添加 Dropout
         logits = self.outc(x)
+
+        # 如果是推理，将每一层的输出保存到JSON文件
+        if is_inference:
+            with open('layer_outputs.json', 'w') as f:
+                json.dump(self.outputs, f)
+
         return logits
     
 class UNet_More_Less(nn.Module):
