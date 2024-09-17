@@ -68,7 +68,7 @@ class UNet_less(nn.Module):
         # 添加 Dropout 层
         self.dropout = nn.Dropout(dropout_rate)
         
-    def forward(self, x, is_inference=False):
+    def forward(self, x):
         x1 = self.inc(x)
         x2 = self.down1(x1)
         x3 = self.down2(x2)
