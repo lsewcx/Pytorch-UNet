@@ -252,27 +252,6 @@ class OutConv(nn.Module):
     def forward(self, x):
         return self.conv(x)
 
-class PyramidPoolingModule(nn.Module):
-    def __init__(self, in_channels, pool_sizes):
-        super(PyramidPoolingModule, self).__init__()
-        self.stages = nn.ModuleList([self._make_stage(in_channels, size) for size in pool_sizes])
-        self.bottleneck = nn.Conv2d(in_channels * (len(pool_sizes) + 1), in_channels, kernel_size=1)
-        self.relu = nn.ReLU(inplace=True)
-
-    def _make_stage(self, in_channels, size):
-        prior = nn.AdaptiveAvgPool2d(output_size=size)
-        conv = nn.Conv2d(in_channels, in_channels, kernel_size=1, bias=False)
-        return nn.Sequential(prior, conv)
-
-    def forward(self, x):
-        h, w = x.size(2), x.size(3)
-        pyramids = [x]
-        for stage in self.stages:
-            pyramids.append(F.interpolate(stage(x), size=(h, w), mode='bilinear', align_corners=True))
-        output = torch.cat(pyramids, dim=1)
-        output = self.bottleneck(output)
-        return self.relu(output)
-
 class self_net(nn.Module):
     def __init__(self, n_channels, n_classes, bilinear=False):
         super(self_net, self).__init__()
@@ -286,7 +265,10 @@ class self_net(nn.Module):
         self.down3 = Down(256,512)  # 原来是256, 512
         factor = 2 if bilinear else 1
         self.down4 = Down(512, 1024 // factor)  # 原来是512, 1024 // factor
-        self.ppm = PyramidPoolingModule(1024 // factor, [1, 2, 3, 6])  # 添加金字塔池化模块
+        
+        # 移除self.ppm
+        # self.ppm = PyramidPoolingModule(1024 // factor, [1, 2, 3, 6])  # 添加金字塔池化模块
+
         self.up1 = Up(1024, 512 // factor, bilinear)  # 原来是1024, 512 // factor
         self.up2 = Up(512, 256 // factor, bilinear)  # 原来是512, 256 // factor
         self.up3 = Up(256, 128 // factor, bilinear)  # 原来是256, 128 // factor
@@ -301,8 +283,7 @@ class self_net(nn.Module):
         x4 = self.down3(x3)
         x5 = self.down4(x4)
         
-        # 金字塔池化
-        x5 = self.ppm(x5)
+        # 移除了self.ppm(x5)
         
         # 上采样部分
         x = self.up1(x5, x4)
@@ -311,4 +292,5 @@ class self_net(nn.Module):
         x = self.up4(x, x1)
         logits = self.outc(x)
         return logits
+
 
