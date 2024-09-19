@@ -88,19 +88,19 @@ if __name__ == "__main__":
 
     score = 0
     ###计算模型参数分数###
-    total_params = count_model_parameters(model_path)
-    norm_params = total_params / 1_000_000
-    print(f"模型的参数总量为: {norm_params} M.")
-    score_para = 0
-    if norm_params > 17:
-        score_para = 10
-    else:
-        if norm_params < 1:
-            score_para = 70
-        else:
-            score_para = 70 - 15 / 4 * (norm_params - 1)
-    print(f"模型参数的分数为{score_para}")
-    score += score_para
+    # total_params = count_model_parameters(model_path)
+    # norm_params = total_params / 1_000_000
+    # print(f"模型的参数总量为: {norm_params} M.")
+    # score_para = 0
+    # if norm_params > 17:
+    #     score_para = 10
+    # else:
+    #     if norm_params < 1:
+    #         score_para = 70
+    #     else:
+    #         score_para = 70 - 15 / 4 * (norm_params - 1)
+    # print(f"模型参数的分数为{score_para}")
+    # score += score_para
     ###################
 
     ####计算class IoU分数####
