@@ -77,7 +77,7 @@ if __name__ == '__main__':
     elif args.model_name == 'UNet':
         net = UNet(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
     elif args.model_name == 'selfnet':
-        net = self_net(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
+        net = self_net(n_channels=3, n_classes=args.classes)
     else:
         raise ValueError(f'Unknown model name: {args.model_name}')
 
