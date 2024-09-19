@@ -192,9 +192,9 @@ class UpSampling(nn.Module):
         x = torch.cat([x, *low_features], dim=1)
         return self.conv(x)
 
-class self_net(nn.Module):
-    def __init__(self, n_classes, n_channels=3, use_deconv=False, align_corners=False, is_ds=True, bilinear=False):
-        super(self_net, self).__init__()
+class UNetPlusPlus(nn.Module):
+    def __init__(self, n_classes, n_channels=3, use_deconv=False, align_corners=False, is_ds=True):
+        super(UNetPlusPlus, self).__init__()
         self.is_ds = is_ds
         self.n_channels = n_channels
         self.n_classes = n_classes
@@ -263,6 +263,27 @@ class self_net(nn.Module):
             return output
         else:
             return out_4
+
+class UpSamplingInception(nn.Module):
+    def __init__(self, in_channels, out_channels, n_cat, use_deconv=False, align_corners=False):
+        super(UpSamplingInception, self).__init__()
+        if use_deconv:
+            self.up = nn.ConvTranspose2d(in_channels , in_channels // 2, kernel_size=2, stride=2)
+        else:
+            self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=align_corners)
+        
+        self.conv = DoubleConvInceptionResNetV2(n_cat * out_channels, out_channels)
+
+    def forward(self, high_feature, *low_features):
+        x = self.up(high_feature)
+        for i in range(len(low_features)):
+            diffY = low_features[i].size()[2] - x.size()[2]
+            diffX = low_features[i].size()[3] - x.size()[3]
+            x = F.pad(x, [diffX // 2, diffX - diffX // 2,
+                          diffY // 2, diffY - diffY // 2])
+        x = torch.cat([x, *low_features], dim=1)
+        return self.conv(x)
+
 class InceptionResNetV2Module(nn.Module):
     def __init__(self, in_channels, out_channels):
         super(InceptionResNetV2Module, self).__init__()
@@ -316,30 +337,10 @@ class DoubleConvInceptionResNetV2(nn.Module):
 
     def forward(self, x):
         return self.double_conv(x)
-class UpSamplingInception(nn.Module):
-    def __init__(self, in_channels, out_channels, n_cat, use_deconv=False, align_corners=False):
-        super(UpSamplingInception, self).__init__()
-        if use_deconv:
-            self.up = nn.ConvTranspose2d(in_channels , in_channels // 2, kernel_size=2, stride=2)
-        else:
-            self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=align_corners)
-        
-        self.conv = DoubleConvInceptionResNetV2(n_cat * out_channels, out_channels)
-
-    def forward(self, high_feature, *low_features):
-        x = self.up(high_feature)
-        for i in range(len(low_features)):
-            diffY = low_features[i].size()[2] - x.size()[2]
-            diffX = low_features[i].size()[3] - x.size()[3]
-            x = F.pad(x, [diffX // 2, diffX - diffX // 2,
-                          diffY // 2, diffY - diffY // 2])
-        x = torch.cat([x, *low_features], dim=1)
-        return self.conv(x)
-
-
-class UNetPlusPlusInception(nn.Module):
-    def __init__(self, n_classes, n_channels=3, use_deconv=False, align_corners=False, is_ds=True):
-        super(UNetPlusPlusInception, self).__init__()
+    
+class self_net(nn.Module):
+    def __init__(self, n_classes, n_channels=3, use_deconv=False, align_corners=False, is_ds=True,bilinear=False):
+        super(self_net, self).__init__()
         self.is_ds = is_ds
         self.n_channels = n_channels
         self.n_classes = n_classes
