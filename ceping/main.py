@@ -11,6 +11,7 @@ import torch
 import torch.nn.functional as F
 import torch.nn as nn
 from tqdm import tqdm
+import json
 import sys
 sys.path.append('../')
 
@@ -70,6 +71,14 @@ def seg(pred_dir, gt_dir, num_classes):
         print(f"Class {cls} Mean IoU: {iou}")
     return mean_ious
 
+def calculate_miou(all_ious):
+    """
+    计算mean intersection over union
+    :param all_ious: 所有类别的IoU列表
+    :return: miou
+    """
+    return np.mean(all_ious)
+
 
 if __name__ == "__main__":
     # 训练好的模型的路径
@@ -100,6 +109,8 @@ if __name__ == "__main__":
     improvement_threshold = 0.06
     pre_IoU = seg(pred_dir, gt_dir, num_classes)
     base_IoU = seg(base_dir, gt_dir, num_classes)
+    unet_miou=calculate_miou(base_IoU)
+    mymodel_miou=calculate_miou(pre_IoU)
     thr = math.floor(math.sqrt(100 - 40) / improvement_threshold)
     # thr = 130
     for pre, base in zip(pre_IoU, base_IoU):
@@ -114,3 +125,29 @@ if __name__ == "__main__":
         print(f"分数：{score_class}")
         score += score_class
     print(f"最终分数：{score}")
+    results = {
+        "UNet": {
+            "Class1_IoU": base_IoU[0],
+            "Class2_IoU": base_IoU[1],
+            "Class3_IoU": base_IoU[2],
+            "mIoU": unet_miou,
+            "FPS":0,
+            "Parameters":0
+        },
+        "OursModel":{
+            "Class1_IoU": pre_IoU[0],
+            "Class2_IoU": pre_IoU[1],
+            "Class3_IoU": pre_IoU[2],
+            "mIoU": mymodel_miou,
+            "FPS":0,
+            "Parameters":norm_params
+        }
+    }
+    
+    json_str = json.dumps(results, indent=4)
+
+    # 将 JSON 字符串保存到 TXT 文件
+    with open('results.txt', 'w') as f:
+        f.write(json_str)
+    with open('results.json', 'w') as f:
+        f.write(json_str)
