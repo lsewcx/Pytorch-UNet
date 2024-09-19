@@ -86,9 +86,7 @@ if __name__ == '__main__':
     logging.info(f'Using device {device}')
 
     net.to(device=device)
-    # state_dict = torch.load(args.model, map_location=device)
-    # net.load_state_dict(state_dict)
-    if  args.model_name == 'UNet':
+    if args.model_name == 'UNet':
         state_dict = torch.load(args.model, map_location=device)
         mask_values = state_dict.pop('mask_values', [0, 1])
         net.load_state_dict(state_dict)
@@ -96,7 +94,7 @@ if __name__ == '__main__':
         total_params_m = total_params / 1_000_000  # 转换为百万参数
         logging.info(f'Total parameters: {total_params_m:.2f}M')
     else:
-        net=torch.load(args.model)
+        net = torch.load(args.model)
 
     logging.info('Model loaded!')
 
@@ -109,6 +107,7 @@ if __name__ == '__main__':
             img = Image.open(full_img_path)
 
             logging.info(f'Predicting image {filename} ...')
+            print(f'Predicting image {filename} ...')  # 添加 print 语句
             
             start_time = time.time()  # 记录开始时间
             mask = predict_img(net=net,
@@ -124,13 +123,17 @@ if __name__ == '__main__':
 
             fps = 1 / inference_time
             logging.info(f'Inference time: {inference_time:.4f} seconds, FPS: {fps:.2f}')
+            print(f'Inference time: {inference_time:.4f} seconds, FPS: {fps:.2f}')  # 添加 print 语句
 
             output_filename = os.path.join(out_dir, f'prediction_{filename[:-4]}.npy')
             np.save(output_filename, mask)
             logging.info(f'Mask saved to {output_filename}')
+            print(f'Mask saved to {output_filename}')  # 添加 print 语句
 
     if num_images > 0:
         avg_fps = num_images / total_inference_time  # 计算平均FPS
         logging.info(f'Average FPS: {avg_fps:.2f}')
+        print(f'Average FPS: {avg_fps:.2f}')  # 添加 print 语句
     else:
         logging.info('No images processed.')
+        print('No images processed.')  # 添加 print 语句
