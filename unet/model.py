@@ -48,13 +48,13 @@ class DoubleConvInceptionResNetV2(nn.Module):
                 nn.BatchNorm2d(mid_channels),
                 nn.ReLU(inplace=True),
                 InceptionResNetV2Module(mid_channels, out_channels),
-                # nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, bias=False),
                 nn.BatchNorm2d(out_channels),
                 nn.ReLU(inplace=True),
             )
 
     def forward(self, x):
         return self.double_conv(x)
+
 class DoubleConv(nn.Module):
     """(convolution => [BN] => ReLU) * 2"""
 
@@ -73,6 +73,7 @@ class DoubleConv(nn.Module):
 
     def forward(self, x):
         return self.double_conv(x)
+
 class Down(nn.Module):
     """Downscaling with maxpool then double conv"""
 
@@ -85,7 +86,6 @@ class Down(nn.Module):
 
     def forward(self, x):
         return self.maxpool_conv(x)
-
 
 class Up(nn.Module):
     """Upscaling then double conv"""
@@ -109,9 +109,6 @@ class Up(nn.Module):
 
         x1 = F.pad(x1, [diffX // 2, diffX - diffX // 2,
                         diffY // 2, diffY - diffY // 2])
-        # if you have padding issues, see
-        # https://github.com/HaiyongJiang/U-Net-Pytorch-Unstructured-Buggy/commit/0e854509c2cea854e247a9c615f175f76fbb2e3a
-        # https://github.com/xiaopeng-liao/Pytorch-UNet/commit/8ebac70e633bac59fc22bb5195e513d5832fb3bd
         x = torch.cat([x2, x1], dim=1)
         return self.conv(x)
 
@@ -122,9 +119,7 @@ class OutConv(nn.Module):
 
     def forward(self, x):
         return self.conv(x)
-'''
-把参数量缩的更小了但是添加了inception v2模块
-'''
+
 class self_net(nn.Module):
     def __init__(self, n_channels=3, n_classes=4, bilinear=False, dropout_rate=0.6):
         super(self_net, self).__init__()
@@ -132,24 +127,24 @@ class self_net(nn.Module):
         self.n_classes = n_classes
         self.bilinear = bilinear
 
-        self.inc = DoubleConvInceptionResNetV2(n_channels, 8)  # 原来是16
-        self.down1 = Down(8, 16)  # 原来是16, 32
-        self.down2 = Down(16, 32)  # 原来是32, 64
-        self.down3 = Down(32, 64)  # 原来是64, 128
+        self.inc = DoubleConvInceptionResNetV2(n_channels, 32)  # 原来是16
+        self.down1 = Down(32, 64)  # 原来是16, 32
+        self.down2 = Down(64, 128)  # 原来是32, 64
+        self.down3 = Down(128, 256)  # 原来是64, 128
         factor = 2 if bilinear else 1
-        self.down4 = Down(64, 128 // factor)  # 原来是128, 256 // factor
-        self.up1 = Up(128, 64 // factor, bilinear)  # 原来是256, 128 // factor
-        self.up2 = Up(64, 32 // factor, bilinear)  # 原来是128, 64 // factor
-        self.up3 = Up(32, 16 // factor, bilinear)  # 原来是64, 32 // factor
-        self.up4 = Up(16, 8, bilinear)  # 原来是32, 16
-        self.outc = OutConv(8, n_classes)  # 原来是16
+        self.down4 = Down(256, 512 // factor)  # 原来是128, 256 // factor
+        self.up1 = Up(512, 256 // factor, bilinear)  # 原来是256, 128 // factor
+        self.up2 = Up(256, 128 // factor, bilinear)  # 原来是128, 64 // factor
+        self.up3 = Up(128, 64 // factor, bilinear)  # 原来是64, 32 // factor
+        self.up4 = Up(64, 32, bilinear)  # 原来是32, 16
+        self.outc = OutConv(32, n_classes)  # 原来是16
 
         # 添加残差连接的卷积层
-        self.res1 = nn.Conv2d(8, 8, kernel_size=1, padding=0, stride=1)  # 原来是16
-        self.res2 = nn.Conv2d(16, 16, kernel_size=1, padding=0, stride=1)  # 原来是32
-        self.res3 = nn.Conv2d(32, 32, kernel_size=1, padding=0, stride=1)  # 原来是64
-        self.res4 = nn.Conv2d(64, 64 // factor, kernel_size=1, padding=0, stride=1)  # 原来是128
-        self.res5 = nn.Conv2d(128, 128 // factor, kernel_size=1, padding=0, stride=1)  # 原来是256
+        self.res1 = nn.Conv2d(32, 32, kernel_size=1, padding=0, stride=1)  # 原来是16
+        self.res2 = nn.Conv2d(64, 64, kernel_size=1, padding=0, stride=1)  # 原来是32
+        self.res3 = nn.Conv2d(128, 128, kernel_size=1, padding=0, stride=1)  # 原来是64
+        self.res4 = nn.Conv2d(256, 256 // factor, kernel_size=1, padding=0, stride=1)  # 原来是128
+        self.res5 = nn.Conv2d(512, 512 // factor, kernel_size=1, padding=0, stride=1)  # 原来是256
 
         # 添加 Dropout 层
         self.dropout = nn.Dropout(dropout_rate)
