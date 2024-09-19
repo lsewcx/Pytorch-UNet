@@ -273,9 +273,9 @@ class PyramidPoolingModule(nn.Module):
         output = self.bottleneck(output)
         return self.relu(output)
 
-class self_unet(nn.Module):
+class self_net(nn.Module):
     def __init__(self, n_channels, n_classes, bilinear=False):
-        super(self_unet, self).__init__()
+        super(self_net, self).__init__()
         self.n_channels = n_channels
         self.n_classes = n_classes
         self.bilinear = bilinear
