@@ -9,6 +9,7 @@ from torchvision import transforms
 from utils.data_loading import BasicDataset
 from unet import *
 from utils.utils import plot_img_and_mask
+import time  # 导入time模块
 
 def predict_img(net,
                 full_img,
@@ -72,6 +73,8 @@ if __name__ == '__main__':
         net = UNetPlusPlus(n_channels=3, n_classes=args.classes,use_deconv=True, align_corners=False, is_ds=True)
     elif args.model_name == 'UNetPlusPlusInception':
         net = UNetPlusPlusInception(n_channels=3, n_classes=args.classes, use_deconv=True, align_corners=False, is_ds=True)
+    elif args.model_name == 'UNet':
+        net = UNet(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
     else:
         raise ValueError(f'Unknown model name: {args.model_name}')
 
@@ -86,18 +89,37 @@ if __name__ == '__main__':
 
     logging.info('Model loaded!')
 
+    total_inference_time = 0  # 累积推理时间
+    num_images = 0  # 处理的图像数量
+
     for filename in os.listdir(in_dir):
         if filename.lower().endswith(('.png', '.jpg', '.jpeg')):
             full_img_path = os.path.join(in_dir, filename)
             img = Image.open(full_img_path)
 
             logging.info(f'Predicting image {filename} ...')
+            
+            start_time = time.time()  # 记录开始时间
             mask = predict_img(net=net,
                                full_img=img,
                                scale_factor=args.scale,
                                out_threshold=args.mask_threshold,
                                device=device)
+            end_time = time.time()  # 记录结束时间
+
+            inference_time = end_time - start_time
+            total_inference_time += inference_time  # 累积推理时间
+            num_images += 1  # 增加图像计数
+
+            fps = 1 / inference_time
+            logging.info(f'Inference time: {inference_time:.4f} seconds, FPS: {fps:.2f}')
 
             output_filename = os.path.join(out_dir, f'prediction_{filename[:-4]}.npy')
             np.save(output_filename, mask)
             logging.info(f'Mask saved to {output_filename}')
+
+    if num_images > 0:
+        avg_fps = num_images / total_inference_time  # 计算平均FPS
+        logging.info(f'Average FPS: {avg_fps:.2f}')
+    else:
+        logging.info('No images processed.')
