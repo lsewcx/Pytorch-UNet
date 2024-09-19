@@ -23,7 +23,7 @@ class SEBlock(nn.Module):
         self.fc = nn.Sequential(
             nn.Linear(in_channels, in_channels // reduction, bias=False),
             nn.ReLU(inplace=True),
-            nn.Linear(in_channels, in_channels, bias=False),
+            nn.Linear(in_channels // reduction, in_channels, bias=False),  # 修复这里的输出维度
             nn.Sigmoid()
         )
 
