@@ -280,18 +280,18 @@ class self_net(nn.Module):
         self.n_classes = n_classes
         self.bilinear = bilinear
 
-        self.inc = DoubleConv(n_channels, 32)  # 原来是64
-        self.down1 = Down(32, 64)  # 原来是64, 128
-        self.down2 = Down(64, 128)  # 原来是128, 256
-        self.down3 = Down(128, 256)  # 原来是256, 512
+        self.inc = DoubleConv(n_channels, 64)  # 原来是64
+        self.down1 = Down(64, 128)  # 原来是64, 128
+        self.down2 = Down(128,256)  # 原来是128, 256
+        self.down3 = Down(256,512)  # 原来是256, 512
         factor = 2 if bilinear else 1
-        self.down4 = Down(256, 512 // factor)  # 原来是512, 1024 // factor
-        self.ppm = PyramidPoolingModule(512 // factor, [1, 2, 3, 6])  # 添加金字塔池化模块
-        self.up1 = Up(512, 256 // factor, bilinear)  # 原来是1024, 512 // factor
-        self.up2 = Up(256, 128 // factor, bilinear)  # 原来是512, 256 // factor
-        self.up3 = Up(128, 64 // factor, bilinear)  # 原来是256, 128 // factor
-        self.up4 = Up(64, 32, bilinear)  # 原来是128, 64
-        self.outc = OutConv(32, n_classes)  # 原来是64
+        self.down4 = Down(512, 1024 // factor)  # 原来是512, 1024 // factor
+        self.ppm = PyramidPoolingModule(1024 // factor, [1, 2, 3, 6])  # 添加金字塔池化模块
+        self.up1 = Up(1024, 512 // factor, bilinear)  # 原来是1024, 512 // factor
+        self.up2 = Up(512, 256 // factor, bilinear)  # 原来是512, 256 // factor
+        self.up3 = Up(256, 128 // factor, bilinear)  # 原来是256, 128 // factor
+        self.up4 = Up(128, 64, bilinear)  # 原来是128, 64
+        self.outc = OutConv(64, n_classes)  # 原来是64
 
     def forward(self, x):
         # 下采样部分
