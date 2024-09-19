@@ -2,18 +2,48 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-class DoubleConvInceptionResNetV2(nn.Module):
+class DepthwiseSeparableConv(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size=3, padding=1):
+        super(DepthwiseSeparableConv, self).__init__()
+        self.depthwise = nn.Conv2d(in_channels, in_channels, kernel_size=kernel_size, padding=padding, groups=in_channels, bias=False)
+        self.pointwise = nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False)
+        self.bn = nn.BatchNorm2d(out_channels)
+        self.relu = nn.ReLU(inplace=True)
+
+    def forward(self, x):
+        x = self.depthwise(x)
+        x = self.pointwise(x)
+        x = self.bn(x)
+        return self.relu(x)
+
+class SEBlock(nn.Module):
+    def __init__(self, in_channels, reduction=16):
+        super(SEBlock, self).__init__()
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.fc = nn.Sequential(
+            nn.Linear(in_channels, in_channels // reduction, bias=False),
+            nn.ReLU(inplace=True),
+            nn.Linear(in_channels, in_channels, bias=False),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        b, c, _, _ = x.size()
+        y = self.avg_pool(x).view(b, c)
+        y = self.fc(y).view(b, c, 1, 1)
+        return x * y.expand_as(x)
+
+class DoubleConv(nn.Module):
+    """(convolution => [BN] => ReLU) * 2"""
+
     def __init__(self, in_channels, out_channels, mid_channels=None):
         super().__init__()
         if not mid_channels:
             mid_channels = out_channels
         self.double_conv = nn.Sequential(
-            nn.Conv2d(in_channels, mid_channels, kernel_size=3, padding=1, bias=False),
-            nn.BatchNorm2d(mid_channels),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(mid_channels, out_channels, kernel_size=3, padding=1, bias=False),
-            nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True),
+            DepthwiseSeparableConv(in_channels, mid_channels),
+            DepthwiseSeparableConv(mid_channels, out_channels),
+            SEBlock(out_channels)  # 添加SE模块
         )
 
     def forward(self, x):
@@ -26,7 +56,7 @@ class Down(nn.Module):
         super().__init__()
         self.maxpool_conv = nn.Sequential(
             nn.MaxPool2d(2),
-            DoubleConvInceptionResNetV2(in_channels, out_channels)
+            DoubleConv(in_channels, out_channels)
         )
 
     def forward(self, x):
@@ -41,10 +71,10 @@ class Up(nn.Module):
         # if bilinear, use the normal convolutions to reduce the number of channels
         if bilinear:
             self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
-            self.conv = DoubleConvInceptionResNetV2(in_channels, out_channels, in_channels // 2)
+            self.conv = DoubleConv(in_channels, out_channels, in_channels // 2)
         else:
             self.up = nn.ConvTranspose2d(in_channels, in_channels // 2, kernel_size=2, stride=2)
-            self.conv = DoubleConvInceptionResNetV2(in_channels, out_channels)
+            self.conv = DoubleConv(in_channels, out_channels)
 
     def forward(self, x1, x2):
         x1 = self.up(x1)
@@ -72,7 +102,7 @@ class self_net(nn.Module):
         self.n_classes = n_classes
         self.bilinear = bilinear
 
-        self.inc = DoubleConvInceptionResNetV2(n_channels, 32)  # 原来是16
+        self.inc = DoubleConv(n_channels, 32)  # 原来是16
         self.down1 = Down(32, 64)  # 原来是16, 32
         self.down2 = Down(64, 128)  # 原来是32, 64
         self.down3 = Down(128, 256)  # 原来是64, 128
@@ -84,27 +114,13 @@ class self_net(nn.Module):
         self.up4 = Up(64, 32, bilinear)  # 原来是32, 16
         self.outc = OutConv(32, n_classes)  # 原来是16
 
-        # 添加残差连接的卷积层
-        self.res1 = nn.Conv2d(32, 32, kernel_size=1, padding=0, stride=1)  # 原来是16
-        self.res2 = nn.Conv2d(64, 64, kernel_size=1, padding=0, stride=1)  # 原来是32
-        self.res3 = nn.Conv2d(128, 128, kernel_size=1, padding=0, stride=1)  # 原来是64
-        self.res4 = nn.Conv2d(256, 256 // factor, kernel_size=1, padding=0, stride=1)  # 原来是128
-        self.res5 = nn.Conv2d(512, 512 // factor, kernel_size=1, padding=0, stride=1)  # 原来是256
-
     def forward(self, x):
         # 下采样部分
         x1 = self.inc(x)
-        x1_res = self.res1(x1)  # 残差连接
-        x2 = self.down1(x1 + x1_res)
-        
-        x2_res = self.res2(x2)  # 残差连接
-        x3 = self.down2(x2 + x2_res)
-        
-        x3_res = self.res3(x3)  # 残差连接
-        x4 = self.down3(x3 + x3_res)
-        
-        x4_res = self.res4(x4)  # 残差连接
-        x5 = self.down4(x4 + x4_res)  # 在下采样的最后一层去掉 Dropout
+        x2 = self.down1(x1)
+        x3 = self.down2(x2)
+        x4 = self.down3(x3)
+        x5 = self.down4(x4)
         
         # 上采样部分
         x = self.up1(x5, x4)
