@@ -441,7 +441,7 @@ class self_net(nn.Module):
         self.is_ds = is_ds
         self.n_channels = n_channels
         self.n_classes = n_classes
-        channels = [32, 64, 128, 256, 512]
+        channels = [64, 128, 256, 512,1024]
         
         self.conv0_0 = DoubleConv(n_channels, channels[0])
         self.conv1_0 = DoubleConv(channels[0], channels[1])
