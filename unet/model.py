@@ -288,11 +288,11 @@ class self_net(nn.Module):
 
         self.fpn = FPN([64, 128, 256, 512, 256], 256)
 
-        self.up1 = Up(512 + 256, 256 // factor, bilinear)  # 修复输入通道数
-        self.up2 = Up(512, 128 // factor, bilinear)
-        self.up3 = Up(256, 64 // factor, bilinear)
-        self.up4 = Up(128, 64, bilinear)
-        self.outc = OutConv(64, n_classes)
+        self.up1 = Up(256, 128 // factor, bilinear)  # 修复输入通道数
+        self.up2 = Up(128, 64 // factor, bilinear)
+        self.up3 = Up(64, 32 // factor, bilinear)
+        self.up4 = Up(32, 16, bilinear)
+        self.outc = OutConv(16, n_classes)
 
     def forward(self, x):
         x1 = self.inc(x)
