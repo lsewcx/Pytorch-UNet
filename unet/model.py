@@ -95,6 +95,27 @@
 #     def forward(self, x):
 #         return self.conv(x)
 
+# class PyramidPoolingModule(nn.Module):
+#     def __init__(self, in_channels, pool_sizes):
+#         super(PyramidPoolingModule, self).__init__()
+#         self.stages = nn.ModuleList([self._make_stage(in_channels, size) for size in pool_sizes])
+#         self.bottleneck = nn.Conv2d(in_channels * (len(pool_sizes) + 1), in_channels, kernel_size=1)
+#         self.relu = nn.ReLU(inplace=True)
+
+#     def _make_stage(self, in_channels, size):
+#         prior = nn.AdaptiveAvgPool2d(output_size=size)
+#         conv = nn.Conv2d(in_channels, in_channels, kernel_size=1, bias=False)
+#         return nn.Sequential(prior, conv)
+
+#     def forward(self, x):
+#         h, w = x.size(2), x.size(3)
+#         pyramids = [x]
+#         for stage in self.stages:
+#             pyramids.append(F.interpolate(stage(x), size=(h, w), mode='bilinear', align_corners=True))
+#         output = torch.cat(pyramids, dim=1)
+#         output = self.bottleneck(output)
+#         return self.relu(output)
+
 # class self_net(nn.Module):
 #     def __init__(self, n_channels=3, n_classes=4, bilinear=False):
 #         super(self_net, self).__init__()
@@ -108,6 +129,7 @@
 #         self.down3 = Down(128, 256)  # 原来是64, 128
 #         factor = 2 if bilinear else 1
 #         self.down4 = Down(256, 512 // factor)  # 原来是128, 256 // factor
+#         self.ppm = PyramidPoolingModule(512 // factor, [1, 2, 3, 6])  # 添加金字塔池化模块
 #         self.up1 = Up(512, 256 // factor, bilinear)  # 原来是256, 128 // factor
 #         self.up2 = Up(256, 128 // factor, bilinear)  # 原来是128, 64 // factor
 #         self.up3 = Up(128, 64 // factor, bilinear)  # 原来是64, 32 // factor
@@ -122,6 +144,9 @@
 #         x4 = self.down3(x3)
 #         x5 = self.down4(x4)
         
+#         # 金字塔池化
+#         x5 = self.ppm(x5)
+        
 #         # 上采样部分
 #         x = self.up1(x5, x4)
 #         x = self.up2(x, x3)
@@ -129,7 +154,6 @@
 #         x = self.up4(x, x1)
 #         logits = self.outc(x)
 #         return logits
-
 
 import torch
 import torch.nn as nn
@@ -249,6 +273,40 @@ class PyramidPoolingModule(nn.Module):
         output = self.bottleneck(output)
         return self.relu(output)
 
+class UNetPlusPlus(nn.Module):
+    def __init__(self, n_channels, n_classes, bilinear=True):
+        super(UNetPlusPlus, self).__init__()
+        self.n_channels = n_channels
+        self.n_classes = n_classes
+        self.bilinear = bilinear
+
+        self.inc = DoubleConv(n_channels, 32)
+        self.down1 = Down(32, 64)
+        self.down2 = Down(64, 128)
+        self.down3 = Down(128, 256)
+        factor = 2 if bilinear else 1
+        self.down4 = Down(256, 512 // factor)
+
+        self.up1 = Up(512, 256 // factor, bilinear)
+        self.up2 = Up(256, 128 // factor, bilinear)
+        self.up3 = Up(128, 64 // factor, bilinear)
+        self.up4 = Up(64, 32, bilinear)
+        self.outc = OutConv(32, n_classes)
+
+    def forward(self, x):
+        x1 = self.inc(x)
+        x2 = self.down1(x1)
+        x3 = self.down2(x2)
+        x4 = self.down3(x3)
+        x5 = self.down4(x4)
+
+        x = self.up1(x5, x4)
+        x = self.up2(x, x3)
+        x = self.up3(x, x2)
+        x = self.up4(x, x1)
+        logits = self.outc(x)
+        return logits
+
 class self_net(nn.Module):
     def __init__(self, n_channels=3, n_classes=4, bilinear=False):
         super(self_net, self).__init__()
@@ -256,34 +314,24 @@ class self_net(nn.Module):
         self.n_classes = n_classes
         self.bilinear = bilinear
 
-        self.inc = DoubleConv(n_channels, 32)  # 原来是16
-        self.down1 = Down(32, 64)  # 原来是16, 32
-        self.down2 = Down(64, 128)  # 原来是32, 64
-        self.down3 = Down(128, 256)  # 原来是64, 128
-        factor = 2 if bilinear else 1
-        self.down4 = Down(256, 512 // factor)  # 原来是128, 256 // factor
-        self.ppm = PyramidPoolingModule(512 // factor, [1, 2, 3, 6])  # 添加金字塔池化模块
-        self.up1 = Up(512, 256 // factor, bilinear)  # 原来是256, 128 // factor
-        self.up2 = Up(256, 128 // factor, bilinear)  # 原来是128, 64 // factor
-        self.up3 = Up(128, 64 // factor, bilinear)  # 原来是64, 32 // factor
-        self.up4 = Up(64, 32, bilinear)  # 原来是32, 16
-        self.outc = OutConv(32, n_classes)  # 原来是16
+        self.unetpp = UNetPlusPlus(n_channels, n_classes, bilinear)
+        self.ppm = PyramidPoolingModule(512 // (2 if bilinear else 1), [1, 2, 3, 6])
 
     def forward(self, x):
-        # 下采样部分
-        x1 = self.inc(x)
-        x2 = self.down1(x1)
-        x3 = self.down2(x2)
-        x4 = self.down3(x3)
-        x5 = self.down4(x4)
-        
+        # UNet++ 主干
+        x1 = self.unetpp.inc(x)
+        x2 = self.unetpp.down1(x1)
+        x3 = self.unetpp.down2(x2)
+        x4 = self.unetpp.down3(x3)
+        x5 = self.unetpp.down4(x4)
+
         # 金字塔池化
         x5 = self.ppm(x5)
-        
+
         # 上采样部分
-        x = self.up1(x5, x4)
-        x = self.up2(x, x3)
-        x = self.up3(x, x2)
-        x = self.up4(x, x1)
-        logits = self.outc(x)
+        x = self.unetpp.up1(x5, x4)
+        x = self.unetpp.up2(x, x3)
+        x = self.unetpp.up3(x, x2)
+        x = self.unetpp.up4(x, x1)
+        logits = self.unetpp.outc(x)
         return logits
