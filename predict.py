@@ -45,7 +45,7 @@ def get_args():
     parser.add_argument('--scale', '-s', type=float, default=0.5,
                         help='Scale factor for the input images')
     parser.add_argument('--bilinear', action='store_true', default=False, help='Use bilinear upsampling')
-    parser.add_argument('--classes', '-c', type=int, default=2, help='Number of classes')
+    parser.add_argument('--classes', '-c', type=int, default=4, help='Number of classes')
     parser.add_argument('--model-name', '-model_name', type=str, default='UNet_less', help='Model name')
 
     return parser.parse_args()
@@ -90,6 +90,9 @@ if __name__ == '__main__':
         state_dict = torch.load(args.model, map_location=device)
         mask_values = state_dict.pop('mask_values', [0, 1])
         net.load_state_dict(state_dict)
+        total_params = sum(p.numel() for p in net.parameters())
+        total_params_m = total_params / 1_000_000  # 转换为百万参数
+        logging.info(f'Total parameters: {total_params_m:.2f}M')
     else:
         net=torch.load(args.model)
 
