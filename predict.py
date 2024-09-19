@@ -86,7 +86,11 @@ if __name__ == '__main__':
     net.to(device=device)
     # state_dict = torch.load(args.model, map_location=device)
     # net.load_state_dict(state_dict)
-    net=torch.load(args.model)
+    if  args.model_name == 'UNet':
+        state_dict = torch.load(args.model, map_location=device)
+        net.load_state_dict(state_dict)
+    else:
+        net=torch.load(args.model)
 
     logging.info('Model loaded!')
 
