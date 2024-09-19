@@ -12,7 +12,7 @@ import json
 from utils.utils import plot_img_and_mask
 import time  # 导入time模块
 
-def predict_img(net: torch.nn.Module,
+def predict_img(net,
                 full_img,
                 device,
                 scale_factor=1,
