@@ -88,6 +88,7 @@ if __name__ == '__main__':
     # net.load_state_dict(state_dict)
     if  args.model_name == 'UNet':
         state_dict = torch.load(args.model, map_location=device)
+        mask_values = state_dict.pop('mask_values', [0, 1])
         net.load_state_dict(state_dict)
     else:
         net=torch.load(args.model)
