@@ -200,7 +200,7 @@ class DoubleConv(nn.Module):
         self.double_conv = nn.Sequential(
             DepthwiseSeparableConv(in_channels, mid_channels),
             DepthwiseSeparableConv(mid_channels, out_channels),
-            SEBlock(out_channels)  # 添加SE模块
+            # SEBlock(out_channels)  # 添加SE模块
         )
 
     def forward(self, x):
