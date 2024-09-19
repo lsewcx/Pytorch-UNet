@@ -174,7 +174,7 @@ class DepthwiseSeparableConv(nn.Module):
         return self.relu(x)
 
 class SEBlock(nn.Module):
-    def __init__(self, in_channels, reduction=16):
+    def __init__(self, in_channels, reduction=8):
         super(SEBlock, self).__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.fc = nn.Sequential(
