@@ -137,14 +137,14 @@ if __name__ == "__main__":
             "FPS": 0,
             "Parameters": 0
         },
-        "OursModel": {
-            "Class1_IoU": pre_IoU[1],
-            "Class2_IoU": pre_IoU[2],
-            "Class3_IoU": pre_IoU[3],
-            "mIoU": mymodel_miou,
-            "FPS": 0,
-            "Parameters": norm_params
-        }
+        # "OursModel": {
+        #     "Class1_IoU": pre_IoU[1],
+        #     "Class2_IoU": pre_IoU[2],
+        #     "Class3_IoU": pre_IoU[3],
+        #     "mIoU": mymodel_miou,
+        #     "FPS": 0,
+        #     "Parameters": norm_params
+        # }
     }
 
     json_str = json.dumps(results, indent=4)
