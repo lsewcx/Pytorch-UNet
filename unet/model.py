@@ -339,7 +339,7 @@ class DoubleConvInceptionResNetV2(nn.Module):
         return self.double_conv(x)
     
 class self_net(nn.Module):
-    def __init__(self, n_classes, n_channels=3, use_deconv=False, align_corners=False, is_ds=True,bilinear=False):
+    def __init__(self, n_classes, n_channels=3, use_deconv=True, align_corners=False, is_ds=True,bilinear=False):
         super(self_net, self).__init__()
         self.is_ds = is_ds
         self.n_channels = n_channels
