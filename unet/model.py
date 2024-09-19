@@ -192,9 +192,9 @@ class UpSampling(nn.Module):
         x = torch.cat([x, *low_features], dim=1)
         return self.conv(x)
 
-class UNetPlusPlus(nn.Module):
-    def __init__(self, n_classes, n_channels=3, use_deconv=False, align_corners=False, is_ds=True):
-        super(UNetPlusPlus, self).__init__()
+class self_net(nn.Module):
+    def __init__(self, n_classes, n_channels=3, use_deconv=False, align_corners=False, is_ds=True, bilinear=False):
+        super(self_net, self).__init__()
         self.is_ds = is_ds
         self.n_channels = n_channels
         self.n_classes = n_classes
@@ -337,9 +337,9 @@ class UpSamplingInception(nn.Module):
         return self.conv(x)
 
 
-class self_net(nn.Module):
+class UNetPlusPlusInception(nn.Module):
     def __init__(self, n_classes, n_channels=3, use_deconv=False, align_corners=False, is_ds=True):
-        super(self_net, self).__init__()
+        super(UNetPlusPlusInception, self).__init__()
         self.is_ds = is_ds
         self.n_channels = n_channels
         self.n_classes = n_classes
