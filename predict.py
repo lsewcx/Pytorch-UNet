@@ -36,6 +36,7 @@ def get_args():
     parser.add_argument('--model', '-m', default='MODEL.pth', metavar='FILE',
                         help='Specify the file in which the model is stored')
     parser.add_argument('--output-dir', '-o', metavar='OUTPUT_DIR', default='test_predictions', help='Directory to save output images')
+    parser.add_argument('--input-dir', '-i', metavar='INPUT_DIR', required=True, help='Directory of input images')  # 添加输入路径参数
     parser.add_argument('--viz', '-v', action='store_true',
                         help='Visualize the images as they are processed')
     parser.add_argument('--no-save', '-n', action='store_true', help='Do not save the output masks')
@@ -58,7 +59,7 @@ if __name__ == '__main__':
     args = get_args()
     logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 
-    in_dir = "/kaggle/working/Pytorch-UNet/NEU_Seg-main/images/test"
+    in_dir = args.input_dir
     out_dir = get_output_filenames(args)
 
     if args.model_name == 'UNet_More_Less':

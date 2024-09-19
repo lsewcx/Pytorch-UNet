@@ -71,13 +71,15 @@ def seg(pred_dir, gt_dir, num_classes):
         print(f"Class {cls} Mean IoU: {iou}")
     return mean_ious
 
-def calculate_miou(all_ious):
+def calculate_miou(all_ious, classes_to_include):
     """
     计算mean intersection over union
     :param all_ious: 所有类别的IoU列表
+    :param classes_to_include: 要包含的类别索引列表
     :return: miou
     """
-    return np.mean(all_ious)
+    selected_ious = [all_ious[cls] for cls in classes_to_include]
+    return np.mean(selected_ious)
 
 
 if __name__ == "__main__":
@@ -105,12 +107,13 @@ if __name__ == "__main__":
     pred_dir = 'test_predictions/'
     base_dir = 'baseline_predictions/'
     gt_dir = 'test_ground_truths/'
-    num_classes = 3  # 异常类型数
+    num_classes = 4  # 总的分类数
+    classes_to_include = [1, 2, 3]  # 只包含分类 1, 2, 3
     improvement_threshold = 0.06
     pre_IoU = seg(pred_dir, gt_dir, num_classes)
     base_IoU = seg(base_dir, gt_dir, num_classes)
-    unet_miou=calculate_miou(base_IoU)
-    mymodel_miou=calculate_miou(pre_IoU)
+    unet_miou = calculate_miou(base_IoU, classes_to_include)
+    mymodel_miou = calculate_miou(pre_IoU, classes_to_include)
     thr = math.floor(math.sqrt(100 - 40) / improvement_threshold)
     # thr = 130
     for pre, base in zip(pre_IoU, base_IoU):
@@ -127,23 +130,23 @@ if __name__ == "__main__":
     print(f"最终分数：{score}")
     results = {
         "UNet": {
-            "Class1_IoU": base_IoU[0],
-            "Class2_IoU": base_IoU[1],
-            "Class3_IoU": base_IoU[2],
+            "Class1_IoU": base_IoU[1],
+            "Class2_IoU": base_IoU[2],
+            "Class3_IoU": base_IoU[3],
             "mIoU": unet_miou,
-            "FPS":0,
-            "Parameters":0
+            "FPS": 0,
+            "Parameters": 0
         },
-        "OursModel":{
-            "Class1_IoU": pre_IoU[0],
-            "Class2_IoU": pre_IoU[1],
-            "Class3_IoU": pre_IoU[2],
+        "OursModel": {
+            "Class1_IoU": pre_IoU[1],
+            "Class2_IoU": pre_IoU[2],
+            "Class3_IoU": pre_IoU[3],
             "mIoU": mymodel_miou,
-            "FPS":0,
-            "Parameters":norm_params
+            "FPS": 0,
+            "Parameters": norm_params
         }
     }
-    
+
     json_str = json.dumps(results, indent=4)
 
     # 将 JSON 字符串保存到 TXT 文件
