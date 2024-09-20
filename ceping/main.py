@@ -33,7 +33,7 @@ def count_model_parameters(model_path):
 
 def calculate_iou(pred, gt, num_classes):
     ious = []
-    for cls in range(num_classes):
+    for cls in range(1, num_classes):  # 从1开始，忽略背景类别0
         pred_cls = (pred == cls)
         gt_cls = (gt == cls)
 
@@ -56,7 +56,7 @@ def seg(pred_dir, gt_dir, num_classes):
 
     assert len(pred_files) == len(gt_files), "Prediction and GT files count do not match"
 
-    all_ious = np.zeros((len(pred_files), num_classes))
+    all_ious = np.zeros((len(pred_files), num_classes - 1))  # 忽略背景类别
 
     for i, (pred_file, gt_file) in enumerate(zip(pred_files, gt_files)):
         pred = np.load(os.path.join(pred_dir, pred_file))
@@ -67,7 +67,7 @@ def seg(pred_dir, gt_dir, num_classes):
 
     mean_ious = np.mean(all_ious, axis=0)
 
-    for cls, iou in enumerate(mean_ious):
+    for cls, iou in enumerate(mean_ious, start=1):  # 从1开始，忽略背景类别
         print(f"Class {cls} Mean IoU: {iou}")
     return mean_ious
 
