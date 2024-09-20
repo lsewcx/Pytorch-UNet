@@ -49,7 +49,6 @@ def calculate_iou(pred, gt, num_classes):
 
     return ious
 
-
 def seg(pred_dir, gt_dir, num_classes):
     pred_files = sorted([f for f in os.listdir(pred_dir) if f.endswith('.npy')])
     gt_files = sorted([f for f in os.listdir(gt_dir) if f.endswith('.npy')])
@@ -81,27 +80,30 @@ def calculate_miou(all_ious, classes_to_include):
     selected_ious = [all_ious[cls] for cls in classes_to_include]
     return np.mean(selected_ious)
 
-
 if __name__ == "__main__":
     # 训练好的模型的路径
     model_path = 'best_model.pth'
 
     score = 0
-    ###计算模型参数分数###
-    total_params = count_model_parameters(model_path)
-    norm_params = total_params / 1_000_000
-    print(f"模型的参数总量为: {norm_params} M.")
-    score_para = 0
-    if norm_params > 17:
-        score_para = 10
-    else:
-        if norm_params < 1:
-            score_para = 70
+    try:
+        ###计算模型参数分数###
+        total_params = count_model_parameters(model_path)
+        norm_params = total_params / 1_000_000
+        print(f"模型的参数总量为: {norm_params} M.")
+        score_para = 0
+        if norm_params > 17:
+            score_para = 10
         else:
-            score_para = 70 - 15 / 4 * (norm_params - 1)
-    print(f"模型参数的分数为{score_para}")
-    score += score_para
-    ###################
+            if norm_params < 1:
+                score_para = 70
+            else:
+                score_para = 70 - 15 / 4 * (norm_params - 1)
+        print(f"模型参数的分数为{score_para}")
+        score += score_para
+        ###################
+    except FileNotFoundError as e:
+        print(e)
+        print("模型文件不存在，跳过模型参数计算。")
 
     ####计算class IoU分数####
     pred_dir = 'test_predictions/'
@@ -128,29 +130,32 @@ if __name__ == "__main__":
         print(f"分数：{score_class}")
         score += score_class
     print(f"最终分数：{score}")
-    results = {
-        "UNet": {
-            "Class1_IoU": base_IoU[1],
-            "Class2_IoU": base_IoU[2],
-            "Class3_IoU": base_IoU[3],
-            "mIoU": unet_miou,
-            "FPS": 26.66,
-            "Parameters": 31.04
-        },
-        "OursModel": {
-            "Class1_IoU": pre_IoU[1],
-            "Class2_IoU": pre_IoU[2],
-            "Class3_IoU": pre_IoU[3],
-            "mIoU": mymodel_miou,
-            "FPS": 0,
-            "Parameters": norm_params
+    try:
+        results = {
+            "UNet": {
+                "Class1_IoU": base_IoU[1],
+                "Class2_IoU": base_IoU[2],
+                "Class3_IoU": base_IoU[3],
+                "mIoU": unet_miou,
+                "FPS": 26.66,
+                "Parameters": 31.04
+            },
+            "OursModel": {
+                "Class1_IoU": pre_IoU[1],
+                "Class2_IoU": pre_IoU[2],
+                "Class3_IoU": pre_IoU[3],
+                "mIoU": mymodel_miou,
+                "FPS": 0,
+                "Parameters": norm_params if 'norm_params' in locals() else "N/A"
+            }
         }
-    }
 
-    json_str = json.dumps(results, indent=4)
+        json_str = json.dumps(results, indent=4)
 
-    # 将 JSON 字符串保存到 TXT 文件
-    with open('results.txt', 'w') as f:
-        f.write(json_str)
-    with open('results.json', 'w') as f:
-        f.write(json_str)
+        # 将 JSON 字符串保存到 TXT 文件
+        with open('results.txt', 'w') as f:
+            f.write(json_str)
+        with open('results.json', 'w') as f:
+            f.write(json_str)
+    except Exception as e:
+        print(f"保存结果失败: {e}")
