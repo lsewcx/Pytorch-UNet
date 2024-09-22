@@ -1,3 +1,4 @@
+import glob
 import os
 import torch
 import math
@@ -13,6 +14,10 @@ import torch.nn as nn
 from tqdm import tqdm
 import json
 import sys
+from torchmetrics.segmentation import MeanIoU
+
+
+
 sys.path.append('../')
 
 def count_model_parameters(model_path):
@@ -31,56 +36,17 @@ def count_model_parameters(model_path):
     total_params = sum(p.numel() for p in model.parameters())
     return total_params
 
-def calculate_iou(pred, gt, num_classes):
-    ious = []
-    for cls in range(num_classes):
-        pred_cls = (pred == cls)
-        gt_cls = (gt == cls)
-
-        intersection = np.logical_and(pred_cls, gt_cls).sum()
-        union = np.logical_or(pred_cls, gt_cls).sum()
-
-        if union == 0:
-            iou = 1.0 if intersection == 0 else 0.0
-        else:
-            iou = intersection / union
-
-        ious.append(iou)
-
-    return ious
 
 
-def seg(pred_dir, gt_dir, num_classes):
-    pred_files = sorted([f for f in os.listdir(pred_dir) if f.endswith('.npy')])
-    gt_files = sorted([f for f in os.listdir(gt_dir) if f.endswith('.npy')])
-
-    assert len(pred_files) == len(gt_files), "Prediction and GT files count do not match"
-
-    all_ious = np.zeros((len(pred_files), num_classes))
-
-    for i, (pred_file, gt_file) in enumerate(zip(pred_files, gt_files)):
-        pred = np.load(os.path.join(pred_dir, pred_file))
-        gt = np.load(os.path.join(gt_dir, gt_file))
-
-        ious = calculate_iou(pred, gt, num_classes)
-        all_ious[i] = ious
-
-    mean_ious = np.mean(all_ious, axis=0)
-
-    for cls, iou in enumerate(mean_ious):
-        print(f"Class {cls} Mean IoU: {iou}")
-    return mean_ious
-
-def calculate_miou(all_ious, classes_to_include):
-    """
-    计算mean intersection over union
-    :param all_ious: 所有类别的IoU列表
-    :param classes_to_include: 要包含的类别索引列表
-    :return: miou
-    """
-    selected_ious = [all_ious[cls] for cls in classes_to_include]
-    return np.mean(selected_ious)
-
+def segmiou(num_classes:int,pred_dir:str,truth_dir:str):
+    miou = MeanIoU(num_classes=num_classes,include_background=False,per_class=True)
+    target = glob.glob(truth_dir+'/*.npy')
+    
+    pred = glob.glob(pred_dir+'/*.npy')
+    target_data =  torch.stack([torch.from_numpy(np.load(file)).long() for file in target])
+    pred_data =  torch.stack([torch.from_numpy(np.load(file)).long() for file in pred])
+    miou_result=miou(pred_data,target_data)
+    return miou_result
 
 if __name__ == "__main__":
     # 训练好的模型的路径
@@ -110,47 +76,48 @@ if __name__ == "__main__":
     num_classes = 4  # 总的分类数
     classes_to_include = [1, 2, 3]  # 只包含分类 1, 2, 3
     improvement_threshold = 0.06
-    pre_IoU = seg(pred_dir, gt_dir, num_classes)
-    base_IoU = seg(base_dir, gt_dir, num_classes)
-    unet_miou = calculate_miou(base_IoU, classes_to_include)
-    mymodel_miou = calculate_miou(pre_IoU, classes_to_include)
     thr = math.floor(math.sqrt(100 - 40) / improvement_threshold)
+    
+    pred_miou=segmiou(num_classes,pred_dir,gt_dir)
+    base_miou=segmiou(num_classes,base_dir,gt_dir)
+    print(pred_miou)
+    print(base_miou)
     # thr = 130
-    for pre, base in zip(pre_IoU, base_IoU):
-        delta = pre - base
-        if delta >= improvement_threshold:
-            score_class = 100
-        else:
-            if delta <= 0:
-                score_class = 0
-            else:
-                score_class = 40 + (thr * delta) ** 2
-        print(f"分数：{score_class}")
-        score += score_class
-    print(f"最终分数：{score}")
-    results = {
-        "UNet": {
-            "Class1_IoU": base_IoU[1],
-            "Class2_IoU": base_IoU[2],
-            "Class3_IoU": base_IoU[3],
-            "mIoU": unet_miou,
-            "FPS": 26.66,
-            "Parameters": 31.04
-        },
-        "OursModel": {
-            "Class1_IoU": pre_IoU[1],
-            "Class2_IoU": pre_IoU[2],
-            "Class3_IoU": pre_IoU[3],
-            "mIoU": mymodel_miou,
-            "FPS": 0,
-            "Parameters": norm_params
-        }
-    }
+    # for pre, base in zip(pre_IoU, base_IoU):
+    #     delta = pre - base
+    #     if delta >= improvement_threshold:
+    #         score_class = 100
+    #     else:
+    #         if delta <= 0:
+    #             score_class = 0
+    #         else:
+    #             score_class = 40 + (thr * delta) ** 2
+    #     print(f"分数：{score_class}")
+    #     score += score_class
+    # print(f"最终分数：{score}")
+    # results = {
+    #     "UNet": {
+    #         "Class1_IoU": base_IoU[1],
+    #         "Class2_IoU": base_IoU[2],
+    #         "Class3_IoU": base_IoU[3],
+    #         "mIoU": unet_miou,
+    #         "FPS": 26.66,
+    #         "Parameters": 31.04
+    #     },
+    #     "OursModel": {
+    #         "Class1_IoU": pre_IoU[1],
+    #         "Class2_IoU": pre_IoU[2],
+    #         "Class3_IoU": pre_IoU[3],
+    #         "mIoU": mymodel_miou,
+    #         "FPS": 0,
+    #         "Parameters": norm_params
+    #     }
+    # }
 
-    json_str = json.dumps(results, indent=4)
+    # json_str = json.dumps(results, indent=4)
 
-    # 将 JSON 字符串保存到 TXT 文件
-    with open('results.txt', 'w') as f:
-        f.write(json_str)
-    with open('results.json', 'w') as f:
-        f.write(json_str)
+    # # 将 JSON 字符串保存到 TXT 文件
+    # with open('results.txt', 'w') as f:
+    #     f.write(json_str)
+    # with open('results.json', 'w') as f:
+    #     f.write(json_str)
