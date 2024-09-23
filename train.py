@@ -19,6 +19,7 @@ from evaluate import evaluate
 from model import self_net
 from utils.data_loading import BasicDataset, CarvanaDataset
 from utils.dice_score import dice_loss
+from model import self_net
 
 dir_img = Path('./NEU_Seg-main/images/training')
 dir_mask = Path('./NEU_Seg-main/annotations/training')
