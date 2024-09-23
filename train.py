@@ -160,6 +160,7 @@ def train_model(
                             Path(dir_checkpoint).mkdir(parents=True, exist_ok=True)
                             model=model.to('cpu')
                             torch.save(model, 'best_model.pth')
+                            model = model.to(device)
                             # save_model=torch.jit.script(model)
                             # torch.jit.save(save_model, 'best_model.pt')
                             logger.info('Best model saved!')
