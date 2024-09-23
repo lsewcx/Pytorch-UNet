@@ -77,7 +77,7 @@ def calculate_miou(all_ious, classes_to_include):
     :param classes_to_include: 要包含的类别索引列表
     :return: miou
     """
-    selected_ious = [all_ious[cls] for cls in classes_to_include]
+    selected_ious = [all_ious[cls - 1] for cls in classes_to_include]  # 修正索引
     return np.mean(selected_ious)
 
 if __name__ == "__main__":
@@ -116,6 +116,8 @@ if __name__ == "__main__":
     base_IoU = seg(base_dir, gt_dir, num_classes)
     unet_miou = calculate_miou(base_IoU, classes_to_include)
     mymodel_miou = calculate_miou(pre_IoU, classes_to_include)
+    print(f"UNet mIoU: {unet_miou}")
+    print(f"OursModel mIoU: {mymodel_miou}")
     thr = math.floor(math.sqrt(100 - 40) / improvement_threshold)
     # thr = 130
     for pre, base in zip(pre_IoU, base_IoU):
@@ -133,17 +135,17 @@ if __name__ == "__main__":
     try:
         results = {
             "UNet": {
-                "Class1_IoU": base_IoU[1],
-                "Class2_IoU": base_IoU[2],
-                "Class3_IoU": base_IoU[3],
+                "Class1_IoU": base_IoU[0],
+                "Class2_IoU": base_IoU[1],
+                "Class3_IoU": base_IoU[2],
                 "mIoU": unet_miou,
                 "FPS": 26.66,
                 "Parameters": 31.04
             },
             "OursModel": {
-                "Class1_IoU": pre_IoU[1],
-                "Class2_IoU": pre_IoU[2],
-                "Class3_IoU": pre_IoU[3],
+                "Class1_IoU": pre_IoU[0],
+                "Class2_IoU": pre_IoU[1],
+                "Class3_IoU": pre_IoU[2],
                 "mIoU": mymodel_miou,
                 "FPS": 0,
                 "Parameters": norm_params if 'norm_params' in locals() else "N/A"

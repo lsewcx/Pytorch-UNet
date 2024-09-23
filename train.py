@@ -16,7 +16,7 @@ from tqdm import tqdm
 
 import wandb
 from evaluate import evaluate
-from unet import *
+from model import self_net
 from utils.data_loading import BasicDataset, CarvanaDataset
 from utils.dice_score import dice_loss
 
@@ -212,19 +212,19 @@ if __name__ == '__main__':
     '''
     UNet_less效果最好到现在为止
     '''
-    if args.model == 'UNet_More_Less':
-        model = UNet_More_Less(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
-    elif args.model == 'UNet_less':
-        model = UNet_less(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
-    elif args.model == 'UNetInception':
-        model = UNetInception(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
-    elif args.model == 'UNetAttention':
-        model = UNetAttention(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
-    elif args.model == 'UNet_plusplus':
-        model = UNetPlusPlus(n_channels=3, n_classes=args.classes,use_deconv=True, align_corners=False, is_ds=True)
-    elif args.model == 'UNetPlusPlusInception':
-        model = UNetPlusPlusInception(n_classes=args.classes, n_channels=3, use_deconv=True, align_corners=False, is_ds=True)
-    elif args.model == 'selfnet':
+    # if args.model == 'UNet_More_Less':
+    #     model = UNet_More_Less(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
+    # elif args.model == 'UNet_less':
+    #     model = UNet_less(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
+    # elif args.model == 'UNetInception':
+    #     model = UNetInception(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
+    # elif args.model == 'UNetAttention':
+    #     model = UNetAttention(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
+    # elif args.model == 'UNet_plusplus':
+    #     model = UNetPlusPlus(n_channels=3, n_classes=args.classes,use_deconv=True, align_corners=False, is_ds=True)
+    # elif args.model == 'UNetPlusPlusInception':
+    #     model = UNetPlusPlusInception(n_classes=args.classes, n_channels=3, use_deconv=True, align_corners=False, is_ds=True)
+    if args.model == 'selfnet':
         model = self_net(n_channels=3, n_classes=args.classes)
     else:
         raise ValueError(f'Unknown model name: {args.model}')
