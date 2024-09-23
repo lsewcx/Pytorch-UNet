@@ -62,21 +62,21 @@ if __name__ == '__main__':
     in_dir = args.input_dir
     out_dir = get_output_filenames(args)
 
-    if args.model_name == 'UNet_More_Less':
-        net = UNet_More_Less(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
-    elif args.model_name == 'UNet_less':
-        net = UNet_less(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
-    elif args.model_name == 'UNetInception':
-        net = UNetInception(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
-    elif args.model_name == 'UNetAttention':
-        net = UNetAttention(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
-    elif args.model_name == 'UNet_plusplus':
-        net = UNetPlusPlus(n_channels=3, n_classes=args.classes,use_deconv=True, align_corners=False, is_ds=True)
-    elif args.model_name == 'UNetPlusPlusInception':
-        net = UNetPlusPlusInception(n_channels=3, n_classes=args.classes, use_deconv=True, align_corners=False, is_ds=True)
-    elif args.model_name == 'UNet':
-        net = UNet(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
-    elif args.model_name == 'selfnet':
+    # if args.model_name == 'UNet_More_Less':
+    #     net = UNet_More_Less(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
+    # elif args.model_name == 'UNet_less':
+    #     net = UNet_less(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
+    # elif args.model_name == 'UNetInception':
+    #     net = UNetInception(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
+    # elif args.model_name == 'UNetAttention':
+    #     net = UNetAttention(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
+    # elif args.model_name == 'UNet_plusplus':
+    #     net = UNetPlusPlus(n_channels=3, n_classes=args.classes,use_deconv=True, align_corners=False, is_ds=True)
+    # elif args.model_name == 'UNetPlusPlusInception':
+    #     net = UNetPlusPlusInception(n_channels=3, n_classes=args.classes, use_deconv=True, align_corners=False, is_ds=True)
+    # elif args.model_name == 'UNet':
+    #     net = UNet(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
+    if args.model_name == 'selfnet':
         net = self_net(n_channels=3, n_classes=args.classes)
     else:
         raise ValueError(f'Unknown model name: {args.model_name}')

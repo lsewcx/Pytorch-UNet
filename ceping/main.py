@@ -11,7 +11,6 @@ from PIL import Image
 import torch
 import torch.nn.functional as F
 import torch.nn as nn
-from tqdm import tqdm
 import json
 import sys
 from torchmetrics.segmentation import MeanIoU
@@ -40,12 +39,29 @@ def count_model_parameters(model_path):
 
 
 def segmiou(num_classes: int, pred_dir: str, truth_dir: str):
-    miou = MeanIoU(num_classes=num_classes, include_background=False,per_class=True)
-    target = glob.glob(truth_dir + '/*.npy')
-    pred = glob.glob(pred_dir + '/*.npy')
-    target_data = torch.stack([torch.from_numpy(np.load(file)).long() for file in target])
-    pred_data = torch.stack([torch.from_numpy(np.load(file)).long() for file in pred])
+    # 初始化 MeanIoU
+    miou = MeanIoU(num_classes=num_classes, include_background=False)
+    
+    # 获取预测和真值文件列表，并确保顺序一致
+    target_files = sorted(glob.glob(truth_dir + '/*.npy'))
+    pred_files = sorted(glob.glob(pred_dir + '/*.npy'))
+    
+    # 检查文件数量是否一致
+    assert len(target_files) == len(pred_files), "预测文件和真值文件数量不一致"
+    
+    # 读取数据并确保数据类型和形状一致
+    target_data = torch.stack([torch.from_numpy(np.load(file)).long() for file in target_files])
+    pred_data = torch.stack([torch.from_numpy(np.load(file)).long() for file in pred_files])
+    
+    # 检查并调整大小一致
+    if target_data.shape != pred_data.shape:
+        min_shape = np.minimum(target_data.shape, pred_data.shape)
+        target_data = target_data[:, :min_shape[1], :min_shape[2]]
+        pred_data = pred_data[:, :min_shape[1], :min_shape[2]]
+    
+    # 计算 mIoU
     miou_result = miou(pred_data, target_data)
+    
     return miou_result
 
 if __name__ == "__main__":
