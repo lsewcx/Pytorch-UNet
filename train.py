@@ -161,7 +161,7 @@ def train_model(
                             best_val_score = val_score
                             logger.info(f'\nNew best model with Dice score: {val_score}')
                             Path(dir_checkpoint).mkdir(parents=True, exist_ok=True)
-                            model.save(model,'best_model.pth')
+                            torch.save(model,'best_model.pth')
                             # save_model=torch.jit.script(model)
                             # torch.jit.save(save_model, 'best_model.pt')
                             logger.info('Best model saved!')
