@@ -16,7 +16,7 @@ from tqdm import tqdm
 
 import wandb
 from evaluate import evaluate
-from .unet import *
+from unet import *
 from utils.data_loading import BasicDataset, CarvanaDataset
 from utils.dice_score import dice_loss
 from model import self_net
