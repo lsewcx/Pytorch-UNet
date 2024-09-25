@@ -84,15 +84,15 @@ if __name__ == '__main__':
     logging.info(f'Using device {device}')
 
     net.to(device=device)
-    if args.model_name == 'UNet':
-        state_dict = torch.load(args.model, map_location=device)
-        mask_values = state_dict.pop('mask_values', [0, 1])
-        net.load_state_dict(state_dict)
-        total_params = sum(p.numel() for p in net.parameters())
-        total_params_m = total_params / 1_000_000  # 转换为百万参数
-        logging.info(f'Total parameters: {total_params_m:.2f}M')
-    else:
-        net = torch.load(args.model)
+    # if args.model_name == 'UNet':
+    #     state_dict = torch.load(args.model, map_location=device)
+    #     mask_values = state_dict.pop('mask_values', [0, 1])
+    #     net.load_state_dict(state_dict)
+    #     total_params = sum(p.numel() for p in net.parameters())
+    #     total_params_m = total_params / 1_000_000  # 转换为百万参数
+    #     logging.info(f'Total parameters: {total_params_m:.2f}M')
+    # else:
+    net = torch.load(args.model)
 
     logging.info('Model loaded!')
 
