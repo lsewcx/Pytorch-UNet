@@ -1,6 +1,5 @@
 import glob
 import os
-import torch
 import math
 import numpy as np
 import os
@@ -8,7 +7,6 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 from PIL import Image
-import torch
 import torch.nn.functional as F
 import torch.nn as nn
 import json
