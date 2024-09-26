@@ -12,24 +12,20 @@ import json
 from utils.utils import plot_img_and_mask
 import time  # 导入time模块
 
-def predict_img(net,
-                full_img,
-                device,
-                scale_factor=1,
-                out_threshold=0.5):
+def predict_img(net, imgs, device, scale_factor=1, out_threshold=0.5):
     net.eval()
-    img = torch.from_numpy(BasicDataset.preprocess(None, full_img, scale_factor, is_mask=False))
-    img = img.unsqueeze(0)
-    img = img.to(device=device, dtype=torch.float32)
+    imgs = [torch.from_numpy(BasicDataset.preprocess(None, img, scale_factor, is_mask=False)) for img in imgs]
+    imgs = torch.stack(imgs)
+    imgs = imgs.to(device=device, dtype=torch.float32)
         
     with torch.no_grad():    
-        output = net(img).cpu()
-        output = F.interpolate(output, (full_img.size[1], full_img.size[0]), mode='bilinear')
+        output = net(imgs).cpu()
+        output = F.interpolate(output, (imgs.size(2), imgs.size(3)), mode='bilinear')
         if net.n_classes > 1:
-            mask = output.argmax(dim=1)
+            masks = output.argmax(dim=1)
         else:
-            mask = torch.sigmoid(output) > out_threshold
-    return mask[0].long().squeeze().numpy()
+            masks = torch.sigmoid(output) > out_threshold
+    return masks.long().squeeze().numpy()
 
 def get_args():
     parser = argparse.ArgumentParser(description='Predict masks from input images')
@@ -47,6 +43,7 @@ def get_args():
     parser.add_argument('--bilinear', action='store_true', default=False, help='Use bilinear upsampling')
     parser.add_argument('--classes', '-c', type=int, default=4, help='Number of classes')
     parser.add_argument('--model-name', '-model_name', type=str, default='UNet_less', help='Model name')
+    parser.add_argument('--batch-size', '-b', type=int, default=1, help='Batch size for inference')  # 添加 batch size 参数
 
     return parser.parse_args()
 
@@ -84,14 +81,6 @@ if __name__ == '__main__':
     logging.info(f'Using device {device}')
 
     net.to(device=device)
-    # if args.model_name == 'UNet':
-    #     state_dict = torch.load(args.model, map_location=device)
-    #     mask_values = state_dict.pop('mask_values', [0, 1])
-    #     net.load_state_dict(state_dict)
-    #     total_params = sum(p.numel() for p in net.parameters())
-    #     total_params_m = total_params / 1_000_000  # 转换为百万参数
-    #     logging.info(f'Total parameters: {total_params_m:.2f}M')
-    # else:
     net = torch.load(args.model)
 
     logging.info('Model loaded!')
@@ -99,31 +88,34 @@ if __name__ == '__main__':
     total_inference_time = 0  # 累积推理时间
     num_images = 0  # 处理的图像数量
 
-    for filename in os.listdir(in_dir):
-        if filename.lower().endswith(('.png', '.jpg', '.jpeg')):
-            full_img_path = os.path.join(in_dir, filename)
-            img = Image.open(full_img_path)
+    image_files = [f for f in os.listdir(in_dir) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
+    batch_size = args.batch_size
 
-            logging.info(f'Predicting image {filename} ...')
-            print(f'Predicting image {filename} ...')  # 添加 print 语句
-            
-            start_time = time.time()  # 记录开始时间
-            mask = predict_img(net=net,
-                               full_img=img,
-                               scale_factor=args.scale,
-                               out_threshold=args.mask_threshold,
-                               device=device)
-            end_time = time.time()  # 记录结束时间
+    for i in range(0, len(image_files), batch_size):
+        batch_files = image_files[i:i + batch_size]
+        imgs = [Image.open(os.path.join(in_dir, f)) for f in batch_files]
 
-            inference_time = end_time - start_time
-            total_inference_time += inference_time  # 累积推理时间
-            num_images += 1  # 增加图像计数
+        logging.info(f'Predicting batch {i // batch_size + 1} ...')
+        print(f'Predicting batch {i // batch_size + 1} ...')  # 添加 print 语句
+        
+        start_time = time.time()  # 记录开始时间
+        masks = predict_img(net=net,
+                            imgs=imgs,
+                            scale_factor=args.scale,
+                            out_threshold=args.mask_threshold,
+                            device=device)
+        end_time = time.time()  # 记录结束时间
 
-            fps = 1 / inference_time
-            logging.info(f'Inference time: {inference_time:.4f} seconds, FPS: {fps:.2f}')
-            print(f'Inference time: {inference_time:.4f} seconds, FPS: {fps:.2f}')  # 添加 print 语句
+        inference_time = end_time - start_time
+        total_inference_time += inference_time  # 累积推理时间
+        num_images += len(batch_files)  # 增加图像计数
 
-            output_filename = os.path.join(out_dir, f'prediction_{filename[:-4]}.npy')
+        fps = len(batch_files) / inference_time
+        logging.info(f'Inference time: {inference_time:.4f} seconds, FPS: {fps:.2f}')
+        print(f'Inference time: {inference_time:.4f} seconds, FPS: {fps:.2f}')  # 添加 print 语句
+
+        for j, mask in enumerate(masks):
+            output_filename = os.path.join(out_dir, f'prediction_{batch_files[j][:-4]}.npy')
             np.save(output_filename, mask)
             logging.info(f'Mask saved to {output_filename}')
             print(f'Mask saved to {output_filename}')  # 添加 print 语句
