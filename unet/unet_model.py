@@ -24,7 +24,7 @@ class UNet(nn.Module):
         self.up3 = Up(256, 128 // factor, bilinear)
         self.up4 = Up(128, 64, bilinear)
         self.outc = OutConv(64, n_classes)
-        self.dropout = nn.Dropout(p=0.4)  # 添加 Dropout 层
+        self.dropout = nn.Dropout(p=0.1)  # 添加 Dropout 层
 
     def forward(self, x):
         x1 = self.inc(x)
