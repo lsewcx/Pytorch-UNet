@@ -81,7 +81,8 @@ class OutConv(nn.Module):
 class self_net(nn.Module):
     def __init__(self, n_channels=3, out_channels=4):
         super().__init__()
-
+        self.n_channels = n_channels
+        self.out_channels = out_channels
         self.encoder = timm.create_model('swin_tiny_patch4_window7_224', pretrained=True, in_chans=n_channels)
         self.decoder = nn.Sequential(
             Up(1024, 512, bilinear=True),
