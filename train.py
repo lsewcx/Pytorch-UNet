@@ -235,9 +235,9 @@ if __name__ == '__main__':
     logger.info(f'Network: {model.__class__.__name__}')
     model = model.to(memory_format=torch.channels_last)
 
-    logger.info(f'Network:\n'
-                 f'\t{model.n_channels} input channels\n'
-                 f'\t{model.n_classes} output channels (classes)\n')
+    # logger.info(f'Network:\n'
+    #              f'\t{model.n_channels} input channels\n'
+    #              f'\t{model.n_classes} output channels (classes)\n')
 
     if args.load:
         state_dict = torch.load(args.load, map_location=device)
