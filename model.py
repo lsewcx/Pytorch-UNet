@@ -329,6 +329,7 @@ def _resnet(arch, block, layers, pretrained=False, **kwargs):
 """
 class self_net(UNet):
     def __init__(self,n_classes=4,norm_layer=None,bilinear=True,**kwargs):
+        self.n_classes = n_classes
         self.base_channels = kwargs.get("base_channels",32)  # resnet18 和resnet34 这里为 32 , 64
         level=kwargs.get("level",5)
         self.b_RGB = kwargs.get("level", True)
