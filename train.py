@@ -21,6 +21,7 @@ from utils.data_loading import BasicDataset, CarvanaDataset
 from utils.dice_score import dice_loss
 from model import self_net
 
+
 dir_img = Path('./NEU_Seg-main/images/training')
 dir_mask = Path('./NEU_Seg-main/annotations/training')
 dir_checkpoint = Path('./checkpoints/')
@@ -230,6 +231,16 @@ if __name__ == '__main__':
     #     model = UNetPlusPlusInception(n_classes=args.classes, n_channels=3, use_deconv=True, align_corners=False, is_ds=True)
     if args.model == 'selfnet':
         model = self_net()
+        try:
+            import segmentation_models_pytorch as smp
+            model = smp.Unet(
+            encoder_name="resnet34",        # choose encoder, e.g. mobilenet_v2 or efficientnet-b7
+            encoder_weights="imagenet",     # use `imagenet` pre-trained weights for encoder initialization
+            in_channels=3,                  # model input channels (1 for gray-scale images, 3 for RGB, etc.)
+            classes=4,                      # model output channels (number of classes in your dataset)
+        )
+        except ImportError:
+            pass
     else:
         raise ValueError(f'Unknown model name: {args.model}')
     logger.info(f'Network: {model.__class__.__name__}')
