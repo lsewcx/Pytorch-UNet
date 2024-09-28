@@ -80,6 +80,7 @@ class OutConv(nn.Module):
 class self_net(nn.Module):
     def __init__(self, n_channels=3, n_classes=4, hidden_dim=96, num_heads=3, num_layers=2):
         super().__init__()
+        self.n_channels = n_channels
         self.swin_transformer = swin_transformer.SwinTransformer(
             img_size=200, 
             patch_size=4, 
