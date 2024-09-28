@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from timm.models import swin_transformer
+import timm
 
 class DepthwiseSeparableConv(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=3, padding=1):
@@ -76,42 +76,26 @@ class OutConv(nn.Module):
 
     def forward(self, x):
         return self.conv(x)
-
+    
+    
 class self_net(nn.Module):
-    def __init__(self, n_channels=3, n_classes=4, hidden_dim=96, num_heads=3, num_layers=2):
+    def __init__(self, in_channels=3, out_channels=4):
         super().__init__()
-        self.n_channels = n_channels
-        self.n_classes = n_classes
-        self.num_layers = num_layers
-        self.num_heads = num_heads
-        self.hidden_dim = hidden_dim
-        self.swin_transformer = swin_transformer.SwinTransformer(
-            img_size=200, 
-            patch_size=4, 
-            in_chans=n_channels, 
-            num_classes=0,  # 设置为0，因为我们不需要分类头
-            embed_dim=hidden_dim, 
-            depths=[num_layers, num_layers, num_layers, num_layers], 
-            num_heads=[num_heads, num_heads, num_heads, num_heads]
+
+        self.encoder = timm.create_model('swin_tiny_patch4_window7_224', pretrained=True, in_chans=in_channels)
+        self.decoder = nn.Sequential(
+            Up(1024, 512, bilinear=True),
+            Up(512, 256, bilinear=True),
+            Up(256, 128, bilinear=True),
+            Up(128, 64, bilinear=True),
+            OutConv(64, out_channels)
         )
 
-        self.up1 = Up(1024, 512)
-        self.up2 = Up(512, 256)
-        self.up3 = Up(256, 128)
-        self.up4 = Up(128, 64)
-        self.outc = OutConv(64, n_classes)
-
     def forward(self, x):
-        # 使用Swin Transformer进行下采样
-        x = self.swin_transformer(x)
+        x = self.encoder(x)
+        x = self.decoder(x)
+        return x
 
-        # 上采样部分
-        x = self.up1(x)
-        x = self.up2(x)
-        x = self.up3(x)
-        x = self.up4(x)
-        logits = self.outc(x)
-        return logits
 # class self_net(nn.Module):
 #     def __init__(self, n_channels=3, n_classes=4):
 #         super(self_net, self).__init__()
