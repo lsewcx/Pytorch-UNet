@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from torchvision.models import resnet50
-from torchvision.models import transformer
+from torchvision.models import VisionTransformer
 import torch.nn.functional as F
 
 class DoubleConv(nn.Module):
@@ -118,7 +118,7 @@ class self_net(nn.Module):
         self.encoder = resnet50(pretrained=True)
 
         # Use Transformer as the middle part
-        self.transformer = transformer.Transformer()
+        self.transformer = VisionTransformer(224, patch_size=16, num_classes=4, embed_dim=1024, depth=12, num_heads=16, mlp_ratio=4)
 
         # Use U-Net as the decoder
         self.up1 = Up(1024, 512)
