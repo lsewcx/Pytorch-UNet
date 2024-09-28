@@ -1,5 +1,7 @@
 import torch
 import torch.nn as nn
+from torchvision.models import resnet50
+from torchvision.models import transformer
 import torch.nn.functional as F
 
 class DoubleConv(nn.Module):
@@ -80,9 +82,7 @@ class OutConv(nn.Module):
 #         self.down3 = Down(256,512)  # 原来是256, 512
 #         factor = 2 if self.bilinear else 1
 #         self.down4 = Down(512, 1024 // factor)  # 原来是512, 1024 // factor
-        
-#         # 移除self.ppm
-#         # self.ppm = PyramidPoolingModule(1024 // factor, [1, 2, 3, 6])  # 添加金字塔池化模块
+
 
 #         self.up1 = Up(1024, 512 // factor, self.bilinear)  # 原来是1024, 512 // factor
 #         self.up2 = Up(512, 256 // factor, self.bilinear)  # 原来是512, 256 // factor
@@ -113,54 +113,31 @@ class self_net(nn.Module):
         super(self_net, self).__init__()
         self.n_channels = n_channels
         self.n_classes = n_classes
-        self.bilinear = False
 
-        self.inc = DoubleConv(n_channels, 64)
-        self.down1 = Down(64, 128)
-        self.down2 = Down(128, 256)
-        self.down3 = Down(256, 512)
-        factor = 2 if self.bilinear else 1
-        self.down4 = Down(512, 1024 // factor)
-        
-        self.up1 = Up(1024, 512 // factor, self.bilinear)
-        self.up2 = Up(512, 256 // factor, self.bilinear)
-        self.up3 = Up(256, 128 // factor, self.bilinear)
-        self.up4 = Up(128, 64, self.bilinear)
+        # Use ResNet50 as the encoder
+        self.encoder = resnet50(pretrained=True)
+
+        # Use Transformer as the middle part
+        self.transformer = transformer.Transformer()
+
+        # Use U-Net as the decoder
+        self.up1 = Up(1024, 512)
+        self.up2 = Up(512, 256)
+        self.up3 = Up(256, 128)
+        self.up4 = Up(128, 64)
         self.outc = OutConv(64, n_classes)
 
-        # Additional upsampling and concatenation layers for U-Net++
-        self.up1_2 = Up(512, 256 // factor, self.bilinear)
-        self.up2_2 = Up(256, 128 // factor, self.bilinear)
-        self.up3_2 = Up(128, 64, self.bilinear)
-
-        self.up1_3 = Up(256, 128 // factor, self.bilinear)
-        self.up2_3 = Up(128, 64, self.bilinear)
-
-        self.up1_4 = Up(128, 64, self.bilinear)
-
     def forward(self, x):
-        x1 = self.inc(x)
-        x2 = self.down1(x1)
-        x3 = self.down2(x2)
-        x4 = self.down3(x3)
-        x5 = self.down4(x4)
+        # Encoder part
+        x1 = self.encoder(x)
 
-        x_up1 = self.up1(x5, x4)
-        x_up2 = self.up2(x_up1, x3)
-        x_up3 = self.up3(x_up2, x2)
-        x_up4 = self.up4(x_up3, x1)
+        # Transformer part
+        x2 = self.transformer(x1)
 
-        x_up1_2 = self.up1_2(x_up1, x3)
-        x_up2_2 = self.up2_2(x_up1_2, x2)
-        x_up3_2 = self.up3_2(x_up2_2, x1)
-
-        x_up1_3 = self.up1_3(x_up1_2, x2)
-        x_up2_3 = self.up2_3(x_up1_3, x1)
-
-        x_up1_4 = self.up1_4(x_up1_3, x1)
-
-        # Concatenate all outputs
-        x_out = torch.cat([x_up4, x_up3_2, x_up2_3, x_up1_4], dim=1)
-
-        logits = self.outc(x_out)
+        # Decoder part
+        x = self.up1(x2, x1)
+        x = self.up2(x, x1)
+        x = self.up3(x, x1)
+        x = self.up4(x, x1)
+        logits = self.outc(x)
         return logits
