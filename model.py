@@ -73,7 +73,7 @@ class self_net(nn.Module):
     def __init__(self):
         super(self_net, self).__init__()
         # 编码器
-        self.encoder_conv1 = nn.Conv2d(1, 64, kernel_size=3, padding=1)
+        self.encoder_conv1 = nn.Conv2d(3, 64, kernel_size=3, padding=1)
         self.encoder_conv2 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
         self.encoder_conv3 = nn.Conv2d(128, 256, kernel_size=3, padding=1)
         self.encoder_conv4 = nn.Conv2d(256, 512, kernel_size=3, padding=1)
