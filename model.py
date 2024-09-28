@@ -62,9 +62,9 @@ class CBAM(nn.Module):
         return x
 
 # 完整的 MA-Unet 模型
-class MAUnet(nn.Module):
+class self_net(nn.Module):
     def __init__(self):
-        super(MAUnet, self).__init__()
+        super(self_net, self).__init__()
         # 编码器
         self.encoder_conv1 = nn.Conv2d(3, 64, 3, padding=1)
         self.encoder_conv2 = nn.Conv2d(64, 128, 3, padding=1)
