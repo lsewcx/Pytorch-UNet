@@ -8,57 +8,51 @@ class SEBlock(nn.Module):
         super(SEBlock, self).__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.fc1 = nn.Linear(channels, channels // reduction)
-        self.relu = nn.ReLU(inplace=True)
         self.fc2 = nn.Linear(channels // reduction, channels)
+        self.relu = nn.ReLU()
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
-        b, c, _, _ = x.size()
-        y = self.avg_pool(x).view(b, c)
+        batch, channels, _, _ = x.size()
+        y = self.avg_pool(x).view(batch, channels)
         y = self.relu(self.fc1(y))
-        y = self.sigmoid(self.fc2(y)).view(b, c, 1, 1)
-        return x * y
-
+        y = self.sigmoid(self.fc2(y)).view(batch, channels, 1, 1)
+        return x * y.expand_as(x)
 
 # 空洞空间金字塔池化模块 (ASPP)
 class ASPP(nn.Module):
-    def __init__(self, in_channels, out_channels):
+    def __init__(self, filters):
         super(ASPP, self).__init__()
-        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=1)
-        self.conv2 = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=3, dilation=3)
-        self.conv3 = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=5, dilation=5)
-        self.conv4 = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=7, dilation=7)
+        self.conv1 = nn.Conv2d(filters, filters, 1, padding=0)
+        self.conv2 = nn.Conv2d(filters, filters, 3, dilation=3, padding=3,)
+        self.conv3 = nn.Conv2d(filters, filters, 3, dilation=5, padding=5)
+        self.conv4 = nn.Conv2d(filters, filters, 3, dilation=7, padding=7)
 
     def forward(self, x):
-        x1 = self.conv1(x)
-        x2 = self.conv2(x)
-        x3 = self.conv3(x)
-        x4 = self.conv4(x)
-        out = torch.cat((x1, x2, x3, x4), dim=1)
-        return out
-
+        feat1 = self.conv1(x)
+        feat2 = self.conv2(x)
+        feat3 = self.conv3(x)
+        feat4 = self.conv4(x)
+        combine = torch.cat((feat1, feat2, feat3, feat4), 1)
+        return combine
 
 # 空间注意力模块 (Spatial Attention)
 class SpatialAttention(nn.Module):
-    def __init__(self, kernel_size=7):
+    def __init__(self):
         super(SpatialAttention, self).__init__()
-        self.conv1 = nn.Conv2d(2, 1, kernel_size=kernel_size, padding=kernel_size//2, bias=False)
-        self.sigmoid = nn.Sigmoid()
+        self.conv = nn.Conv2d(2, 1, 7, padding=3)
 
     def forward(self, x):
         avg_out = torch.mean(x, dim=1, keepdim=True)
         max_out, _ = torch.max(x, dim=1, keepdim=True)
-        x = torch.cat([avg_out, max_out], dim=1)
-        x = self.conv1(x)
-        return self.sigmoid(x)
-
+        x = torch.cat((avg_out, max_out), dim=1)
+        x = self.conv(x)
+        return x * torch.sigmoid(x)
 
 # 卷积块注意力模块 (CBAM)
 class CBAM(nn.Module):
     def __init__(self, channels):
         super(CBAM, self).__init__()
-        self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        self.max_pool = nn.AdaptiveMaxPool2d(1)
         self.se = SEBlock(channels)
         self.sa = SpatialAttention()
 
@@ -67,59 +61,60 @@ class CBAM(nn.Module):
         x = self.sa(x)
         return x
 
-
 # 完整的 MA-Unet 模型
-class self_net(nn.Module):
+class MAUnet(nn.Module):
     def __init__(self):
-        super(self_net, self).__init__()
+        super(MAUnet, self).__init__()
         # 编码器
-        self.encoder_conv1 = nn.Conv2d(3, 64, kernel_size=3, padding=1)
-        self.encoder_conv2 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
-        self.encoder_conv3 = nn.Conv2d(128, 256, kernel_size=3, padding=1)
-        self.encoder_conv4 = nn.Conv2d(256, 512, kernel_size=3, padding=1)
-        self.encoder_conv5 = nn.Conv2d(512, 1024, kernel_size=3, padding=1)
+        self.encoder_conv1 = nn.Conv2d(3, 64, 3, padding=1)
+        self.encoder_conv2 = nn.Conv2d(64, 128, 3, padding=1)
+        self.encoder_conv3 = nn.Conv2d(128, 256, 3, padding=1)
+        self.encoder_conv4 = nn.Conv2d(256, 512, 3, padding=1)
+        self.encoder_conv5 = nn.Conv2d(512, 1024, 3, padding=1)
 
         self.cbam1 = CBAM(64)
         self.cbam2 = CBAM(128)
         self.cbam3 = CBAM(256)
         self.cbam4 = CBAM(512)
 
-        self.aspp = ASPP(1024, 1024)
+        self.aspp = ASPP(1024)
 
         # 解码器
-        self.decoder_conv1 = nn.Conv2d(1024, 512, kernel_size=3, padding=1)
-        self.decoder_conv2 = nn.Conv2d(512, 256, kernel_size=3, padding=1)
-        self.decoder_conv3 = nn.Conv2d(256, 128, kernel_size=3, padding=1)
-        self.decoder_conv4 = nn.Conv2d(128, 64, kernel_size=3, padding=1)
+        self.decoder_conv1 = nn.Conv2d(1024, 512, 3, padding=1)
+        self.decoder_conv2 = nn.Conv2d(512, 256, 3, padding=1)
+        self.decoder_conv3 = nn.Conv2d(256, 128, 3, padding=1)
+        self.decoder_conv4 = nn.Conv2d(128, 64, 3, padding=1)
 
-        self.output_conv = nn.Conv2d(64, 4, kernel_size=1)
+        self.output_conv = nn.Conv2d(64, 4, 1)  # 修改输出为4个分类
 
     def forward(self, x):
         # 编码器
-        x1 = F.relu(self.encoder_conv1(x))
+        x1 = self.encoder_conv1(x)
         x1 = self.cbam1(x1)
 
-        x2 = F.relu(self.encoder_conv2(x1))
+        x2 = self.encoder_conv2(x1)
         x2 = self.cbam2(x2)
 
-        x3 = F.relu(self.encoder_conv3(x2))
+        x3 = self.encoder_conv3(x2)
         x3 = self.cbam3(x3)
 
-        x4 = F.relu(self.encoder_conv4(x3))
+        x4 = self.encoder_conv4(x3)
         x4 = self.cbam4(x4)
 
-        x5 = F.relu(self.encoder_conv5(x4))
+        x5 = self.encoder_conv5(x4)
         x5 = self.aspp(x5)
 
         # 解码器
-        x6 = F.relu(self.decoder_conv1(x5))
-        x7 = F.relu(self.decoder_conv2(x6))
-        x8 = F.relu(self.decoder_conv3(x7))
-        x9 = F.relu(self.decoder_conv4(x8))
+        x6 = self.decoder_conv1(x5)
+        x7 = self.decoder_conv2(x6)
+        x8 = self.decoder_conv3(x7)
+        x9 = self.decoder_conv4(x8)
 
-        out = torch.sigmoid(self.output_conv(x9))
+        out = self.output_conv(x9)
 
         return out
+
+
 
 
 # class DoubleConv(nn.Module):
