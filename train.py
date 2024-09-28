@@ -229,7 +229,7 @@ if __name__ == '__main__':
     # elif args.model == 'UNetPlusPlusInception':
     #     model = UNetPlusPlusInception(n_classes=args.classes, n_channels=3, use_deconv=True, align_corners=False, is_ds=True)
     if args.model == 'selfnet':
-        model = self_net(n_channels=3, n_classes=args.classes)
+        model = self_net()
     else:
         raise ValueError(f'Unknown model name: {args.model}')
     logger.info(f'Network: {model.__class__.__name__}')
