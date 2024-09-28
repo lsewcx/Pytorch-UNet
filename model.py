@@ -118,7 +118,7 @@ class self_net(nn.Module):
         self.encoder = resnet50(pretrained=True)
 
         # Use Transformer as the middle part
-        self.transformer = VisionTransformer(224, patch_size=16, num_classes=4, depth=12, num_heads=16, num_layers=12,mlp_dim=1024,hidden_dim=256 )
+        self.transformer = VisionTransformer(224, patch_size=16, num_classes=4,num_heads=16, num_layers=12,mlp_dim=1024,hidden_dim=256 )
 
         # Use U-Net as the decoder
         self.up1 = Up(1024, 512)
