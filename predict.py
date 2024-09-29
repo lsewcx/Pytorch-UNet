@@ -119,8 +119,6 @@ if __name__ == '__main__':
             full_img_path = os.path.join(in_dir, filename)
             img = Image.open(full_img_path)
 
-            img = img.resize((200, 200), Image.BILINEAR)
-
             logging.info(f'Predicting image {filename} ...')
             print(f'Predicting image {filename} ...')  # 添加 print 语句
             

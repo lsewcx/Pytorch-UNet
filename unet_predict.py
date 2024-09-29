@@ -20,7 +20,7 @@ def predict_img(net, imgs, device, scale_factor=1, out_threshold=0.5):
         
     with torch.no_grad():    
         output = net(imgs).cpu()
-        output = F.interpolate(output, (imgs.size(2), imgs.size(3)), mode='bilinear')
+        output = F.interpolate(output, (200, 200), mode='bilinear')  # 调整输出大小为200x200
         n_classes = 4
         if n_classes > 1:
             masks = output.argmax(dim=1)
