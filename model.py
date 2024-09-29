@@ -151,11 +151,11 @@ class UnetDecoder(nn.Module):
         super(UnetDecoder, self).__init__()
         self.center = nn.Identity()
         self.blocks = nn.ModuleList([
-            DecoderBlock(768, 256),
-            DecoderBlock(384, 128),
-            DecoderBlock(192, 64),
-            DecoderBlock(128, 32),
-            DecoderBlock(32, 16)
+            DecoderBlock(512, 256),  # 修改输入通道数为 512
+            DecoderBlock(256 + 256, 128),  # 修改输入通道数为 256 + 256
+            DecoderBlock(128 + 128, 64),  # 修改输入通道数为 128 + 128
+            DecoderBlock(64 + 64, 32),  # 修改输入通道数为 64 + 64
+            DecoderBlock(32 + 32, 16)  # 修改输入通道数为 32 + 32
         ])
 
     def forward(self, *features):
