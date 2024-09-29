@@ -21,7 +21,11 @@ def predict_img(net, imgs, device, scale_factor=1, out_threshold=0.5):
     with torch.no_grad():    
         output = net(imgs).cpu()
         output = F.interpolate(output, (imgs.size(2), imgs.size(3)), mode='bilinear')
-        masks = output.argmax(dim=1)
+        n_classes = 4
+        if n_classes > 1:
+            masks = output.argmax(dim=1)
+        else:
+            masks = torch.sigmoid(output) > out_threshold
     return masks.long().squeeze().numpy()
 
 def get_args():
