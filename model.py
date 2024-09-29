@@ -1,3 +1,4 @@
+from typing import Optional
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -511,7 +512,21 @@ class UnetDecoder(nn.Module):
             x = decoder_block(x, skip)
 
         return x
-    
+class SegmentationHead(nn.Sequential):
+    def __init__(
+        self, in_channels, out_channels, kernel_size=3, activation=None, upsampling=1
+    ):
+        conv2d = nn.Conv2d(
+            in_channels, out_channels, kernel_size=kernel_size, padding=kernel_size // 2
+        )
+        upsampling = (
+            nn.UpsamplingBilinear2d(scale_factor=upsampling)
+            if upsampling > 1
+            else nn.Identity()
+        )
+        activation = Activation(activation)
+        super().__init__(conv2d, upsampling, activation)
+        
 class self_net(EncoderDecoder):
     def __init__(
             self,
@@ -519,9 +534,10 @@ class self_net(EncoderDecoder):
             encoder_weights='imagenet',
             decoder_use_batchnorm=True,
             decoder_channels=(256, 128, 64, 32, 16),
-            classes=4,
+            encoder_depth: int = 5,
             activation='sigmoid',
-            center=False,  # usefull for VGG models
+            classes: int = 4,
+            decoder_attention_type: Optional[str] = None,
     ):
         encoder = get_encoder(
             encoder_name,
@@ -529,14 +545,23 @@ class self_net(EncoderDecoder):
         )
 
         decoder = UnetDecoder(
-            encoder_channels=encoder.out_shapes,
+            encoder_channels=self.encoder.out_channels,
             decoder_channels=decoder_channels,
-            final_channels=classes,
+            n_blocks=encoder_depth,
             use_batchnorm=decoder_use_batchnorm,
-            center=center,
+            center=True if encoder_name.startswith("vgg") else False,
+            attention_type=decoder_attention_type,
         )
 
-        super().__init__(encoder, decoder, activation)
+        segmentation_head = SegmentationHead(
+            in_channels=decoder_channels[-1],
+            out_channels=classes,
+            activation=activation,
+            kernel_size=3,
+        )
+
+
+        super().__init__(encoder, decoder, activation,segmentation_head)
 
         self.name = 'u-{}'.format(encoder_name)
 
