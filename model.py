@@ -113,7 +113,6 @@
 import torch.nn as nn
 import torch
 import torchvision
-import torch.nn as nn
 import torch.nn.functional as F
 
 class DecoderBlock(nn.Module):
@@ -149,6 +148,14 @@ class DecoderBlock(nn.Module):
     # x1-upconv , x2-downconv
     def forward(self, x1, x2):
         x1 = self.up(x1)
+        
+        # 调整 x1 的大小以匹配 x2
+        diffY = x2.size()[2] - x1.size()[2]
+        diffX = x2.size()[3] - x1.size()[3]
+
+        x1 = F.pad(x1, [diffX // 2, diffX - diffX // 2,
+                        diffY // 2, diffY - diffY // 2])
+        
         x = torch.cat([x1, x2], dim=1)
         return self.conv(x)
 
@@ -205,3 +212,5 @@ class self_net(nn.Module):
         out = self.lastlayer(d5)
 
         return out
+
+
