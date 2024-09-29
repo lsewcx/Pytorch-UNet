@@ -237,9 +237,9 @@ class SegmentationHead(nn.Module):
         x = self.activation(x)
         return x
 
-class UNet(nn.Module):
+class self_net(nn.Module):
     def __init__(self):
-        super(UNet, self).__init__()
+        super(self_net, self).__init__()
         self.encoder = ResNetEncoder()
         self.decoder = UnetDecoder()
         self.segmentation_head = SegmentationHead()
