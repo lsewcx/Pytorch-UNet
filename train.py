@@ -233,12 +233,17 @@ if __name__ == '__main__':
         model = self_net()
         try:
             import segmentation_models_pytorch as smp
+            # model = smp.DeepLabV3Plus(
+            #     encoder_name="resnet34",        # choose encoder, e.g. mobilenet_v2 or efficientnet-b7
+            #     in_channels=3,                  # model input channels (1 for gray-scale images, 3 for RGB, etc.)
+            #     classes=4,                      # model output channels (number of classes in your dataset)
+            # )
             model = smp.Unet(
-            encoder_name="resnet34",        # choose encoder, e.g. mobilenet_v2 or efficientnet-b7
+            encoder_name="resnet18",        # choose encoder, e.g. mobilenet_v2 or efficientnet-b7
             encoder_weights="imagenet",     # use `imagenet` pre-trained weights for encoder initialization
             in_channels=3,                  # model input channels (1 for gray-scale images, 3 for RGB, etc.)
             classes=4,                      # model output channels (number of classes in your dataset)
-        )
+            )
         except ImportError:
             pass
     else:
