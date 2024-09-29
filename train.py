@@ -230,7 +230,7 @@ if __name__ == '__main__':
     # elif args.model == 'UNetPlusPlusInception':
     #     model = UNetPlusPlusInception(n_classes=args.classes, n_channels=3, use_deconv=True, align_corners=False, is_ds=True)
     if args.model == 'selfnet':
-        model = self_net()
+        # model = self_net()
         try:
             import segmentation_models_pytorch as smp
             # model = smp.DeepLabV3Plus(
