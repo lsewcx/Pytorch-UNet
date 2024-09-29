@@ -240,7 +240,7 @@ if __name__ == '__main__':
             pass
     else:
         raise ValueError(f'Unknown model name: {args.model}')
-    logger.info(f'Network: {model.__class__.__name__}')
+    # logger.info(f'Network: {model.__class__.__name__}')
     model = model.to(memory_format=torch.channels_last)
     
     # logger.info(f'Network:\n'
