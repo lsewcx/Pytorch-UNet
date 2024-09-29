@@ -116,7 +116,7 @@ def train_model(
                     loss = criterion(masks_pred, true_masks)
                     loss += dice_loss(
                         F.softmax(masks_pred, dim=1).float(),
-                        F.one_hot(true_masks, model.n_classes).permute(0, 3, 1, 2).float(),
+                        F.one_hot(true_masks, 4).permute(0, 3, 1, 2).float(),
                         multiclass=True
                     )
 
