@@ -114,114 +114,132 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torchvision.models import resnet18
 
-class Conv2dReLU(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, padding):
-        super(Conv2dReLU, self).__init__()
-        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=padding, bias=False)
-        self.bn = nn.BatchNorm2d(out_channels)
+class BasicBlock(nn.Module):
+    expansion = 1
+
+    def __init__(self, in_channels, out_channels, stride=1, downsample=None):
+        super(BasicBlock, self).__init__()
+        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(out_channels)
         self.relu = nn.ReLU(inplace=True)
+        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False)
+        self.bn2 = nn.BatchNorm2d(out_channels)
+        self.downsample = downsample
 
     def forward(self, x):
-        x = self.conv(x)
-        x = self.bn(x)
-        x = self.relu(x)
-        return x
+        identity = x
 
-class DecoderBlock(nn.Module):
-    def __init__(self, in_channels, out_channels):
-        super(DecoderBlock, self).__init__()
-        self.conv1 = Conv2dReLU(in_channels, out_channels, kernel_size=3, padding=1)
-        self.conv2 = Conv2dReLU(out_channels, out_channels, kernel_size=3, padding=1)
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)
 
-    def forward(self, x):
-        x = self.conv1(x)
-        x = self.conv2(x)
-        return x
+        out = self.conv2(out)
+        out = self.bn2(out)
 
-class Attention(nn.Module):
-    def __init__(self):
-        super(Attention, self).__init__()
-        self.attention = nn.Identity()
+        if self.downsample is not None:
+            identity = self.downsample(x)
 
-    def forward(self, x):
-        return self.attention(x)
+        out += identity
+        out = self.relu(out)
 
-class UnetDecoder(nn.Module):
-    def __init__(self):
-        super(UnetDecoder, self).__init__()
-        self.center = nn.Identity()
-        self.blocks = nn.ModuleList([
-            DecoderBlock(512, 256),  # 修改输入通道数为 512
-            DecoderBlock(256 + 256, 128),  # 修改输入通道数为 256 + 256
-            DecoderBlock(128 + 128, 64),  # 修改输入通道数为 128 + 128
-            DecoderBlock(64 + 64, 32),  # 修改输入通道数为 64 + 64
-            DecoderBlock(32 + 32, 16)  # 修改输入通道数为 32 + 32
-        ])
-
-    def forward(self, *features):
-        x = features[0]
-        for i, block in enumerate(self.blocks):
-            x = block(x)
-        return x
-
-class SegmentationHead(nn.Module):
-    def __init__(self, in_channels, out_channels):
-        super(SegmentationHead, self).__init__()
-        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1)
-        self.activation = nn.Identity()
-
-    def forward(self, x):
-        x = self.conv(x)
-        x = self.activation(x)
-        return x
+        return out
 
 class ResNetEncoder(nn.Module):
     def __init__(self):
         super(ResNetEncoder, self).__init__()
-        resnet = resnet18(pretrained=True)
-        self.conv1 = resnet.conv1
-        self.bn1 = resnet.bn1
-        self.relu = resnet.relu
-        self.maxpool = resnet.maxpool
-        self.layer1 = resnet.layer1
-        self.layer2 = resnet.layer2
-        self.layer3 = resnet.layer3
-        self.layer4 = resnet.layer4
+        self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3, bias=False)
+        self.bn1 = nn.BatchNorm2d(64)
+        self.relu = nn.ReLU(inplace=True)
+        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+
+        self.layer1 = self._make_layer(64, 64, stride=1)
+        self.layer2 = self._make_layer(64, 128, stride=2)
+        self.layer3 = self._make_layer(128, 256, stride=2)
+        self.layer4 = self._make_layer(256, 512, stride=2)
+
+    def _make_layer(self, in_channels, out_channels, stride):
+        return nn.Sequential(
+            BasicBlock(in_channels, out_channels, stride, downsample=nn.Sequential(
+                nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=stride, bias=False),
+                nn.BatchNorm2d(out_channels)
+            )),
+            BasicBlock(out_channels, out_channels)
+        )
 
     def forward(self, x):
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
         x = self.maxpool(x)
+
         x1 = self.layer1(x)
         x2 = self.layer2(x1)
         x3 = self.layer3(x2)
         x4 = self.layer4(x3)
-        return [x4, x3, x2, x1]
 
-class Unet(nn.Module):
-    def __init__(self, encoder, decoder, segmentation_head):
-        super(Unet, self).__init__()
-        self.encoder = encoder
-        self.decoder = decoder
-        self.segmentation_head = segmentation_head
+        return x1, x2, x3, x4
+
+class DecoderBlock(nn.Module):
+    def __init__(self, in_channels, middle_channels, out_channels):
+        super(DecoderBlock, self).__init__()
+        self.conv1 = nn.Conv2d(in_channels, middle_channels, kernel_size=3, stride=1, padding=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(middle_channels)
+        self.relu = nn.ReLU(inplace=True)
+        self.conv2 = nn.Conv2d(middle_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False)
+        self.bn2 = nn.BatchNorm2d(out_channels)
 
     def forward(self, x):
-        features = self.encoder(x)
-        decoder_output = self.decoder(*features)
-        masks = self.segmentation_head(decoder_output)
-        return masks
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.conv2(x)
+        x = self.bn2(x)
+        return x
+
+class UnetDecoder(nn.Module):
+    def __init__(self, in_channels, middle_channels, out_channels):
+        super(UnetDecoder, self).__init__()
+        self.center = nn.Identity()
+        self.blocks = nn.ModuleList([
+            DecoderBlock(in_channels, middle_channels, out_channels),
+            DecoderBlock(middle_channels + out_channels, middle_channels, out_channels // 2),
+            DecoderBlock(middle_channels + out_channels // 2, middle_channels // 2, out_channels // 4),
+            DecoderBlock(middle_channels // 2 + out_channels // 4, middle_channels // 4, out_channels // 8),
+            DecoderBlock(middle_channels // 4 + out_channels // 8, middle_channels // 8, out_channels // 16)
+        ])
+
+    def forward(self, *x):
+        center = self.center(x[-1])
+        outputs = []
+        for i, block in enumerate(self.blocks):
+            if i == 0:
+                inputs = [center]
+            else:
+                inputs = [outputs[-1], x[i-1]]
+            outputs.append(block(*inputs))
+        return outputs[-1]
+
+class SegmentationHead(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super(SegmentationHead, self).__init__()
+        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1)
+        self.activation = nn.ReLU(inplace=True)
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.activation(x)
+        return x
 
 class self_net(nn.Module):
-    def __init__(self, n_channels=3, n_classes=4):
+    def __init__(self):
         super(self_net, self).__init__()
         self.encoder = ResNetEncoder()
-        self.decoder = UnetDecoder()
-        self.segmentation_head = SegmentationHead(in_channels=16, out_channels=n_classes)
+        self.decoder = UnetDecoder(512, 256, 16)
+        self.segmentation_head = SegmentationHead(16, 4)
 
     def forward(self, x):
-        features = self.encoder(x)
-        decoder_output = self.decoder(*features)
-        masks = self.segmentation_head(decoder_output)
-        return masks
+        x1, x2, x3, x4 = self.encoder(x)
+        x = self.decoder(x4, x3, x2, x1)
+        x = self.segmentation_head(x)
+        return x
 
