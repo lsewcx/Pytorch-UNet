@@ -158,6 +158,9 @@ def train_model(
                             logger.info(f'\nNew best model with Dice score: {val_score}')
                             Path(dir_checkpoint).mkdir(parents=True, exist_ok=True)
                             torch.save(model,'best_model.pth')
+                            model = model.to('cpu')
+                            torch.save(model,'modelcpu.pth')
+                            model = model.to(device)
                             # save_model=torch.jit.script(model)
                             # torch.jit.save(save_model, 'best_model.pt')
                             logger.info('Best model saved!')
@@ -232,8 +235,6 @@ if __name__ == '__main__':
             encoder_weights="imagenet",     # use `imagenet` pre-trained weights for encoder initialization
             in_channels=3,                  # model input channels (1 for gray-scale images, 3 for RGB, etc.)
             classes=4,                      # model output channels (number of classes in your dataset)
-            encoder_depth=5,
-            decoder_channels=[256, 128, 64, 32, 16],
             )
             total_params = sum(p.numel() for p in model.parameters())
             logging.info(f"模型的参数量: {total_params / 1e6:.2f}M")
