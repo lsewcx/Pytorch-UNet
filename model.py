@@ -526,7 +526,7 @@ class SegmentationHead(nn.Sequential):
         )
         activation = Activation(activation)
         super().__init__(conv2d, upsampling, activation)
-        
+
 class self_net(EncoderDecoder):
     def __init__(
             self,
@@ -545,7 +545,7 @@ class self_net(EncoderDecoder):
         )
 
         decoder = UnetDecoder(
-            encoder_channels=self.encoder.out_channels,
+            encoder_channels=encoder.out_channels,
             decoder_channels=decoder_channels,
             n_blocks=encoder_depth,
             use_batchnorm=decoder_use_batchnorm,
