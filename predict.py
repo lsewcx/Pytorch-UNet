@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from PIL import Image
 from torchvision import transforms
 from utils.data_loading import BasicDataset
-from model import self_net
+# from model import self_net
 import json
 from utils.utils import plot_img_and_mask
 import time  # 导入time模块
