@@ -109,137 +109,125 @@
 #         logits = self.outc(x)
 #         return logits
 
+
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torchvision.models import resnet18
 
-class BasicBlock(nn.Module):
-    expansion = 1
-
-    def __init__(self, in_channels, out_channels, stride=1, downsample=None):
-        super(BasicBlock, self).__init__()
-        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(out_channels)
+class Conv2dReLU(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, stride, padding, bias=False):
+        super(Conv2dReLU, self).__init__()
+        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding, bias=bias)
+        self.bn = nn.BatchNorm2d(out_channels)
         self.relu = nn.ReLU(inplace=True)
-        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False)
-        self.bn2 = nn.BatchNorm2d(out_channels)
-        self.downsample = downsample
 
     def forward(self, x):
-        identity = x
-
-        out = self.conv1(x)
-        out = self.bn1(out)
-        out = self.relu(out)
-
-        out = self.conv2(out)
-        out = self.bn2(out)
-
-        if self.downsample is not None:
-            identity = self.downsample(x)
-
-        out += identity
-        out = self.relu(out)
-
-        return out
-
-class ResNetEncoder(nn.Module):
-    def __init__(self):
-        super(ResNetEncoder, self).__init__()
-        self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3, bias=False)
-        self.bn1 = nn.BatchNorm2d(64)
-        self.relu = nn.ReLU(inplace=True)
-        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-
-        self.layer1 = self._make_layer(64, 64, stride=1)
-        self.layer2 = self._make_layer(64, 128, stride=2)
-        self.layer3 = self._make_layer(128, 256, stride=2)
-        self.layer4 = self._make_layer(256, 512, stride=2)
-
-    def _make_layer(self, in_channels, out_channels, stride):
-        return nn.Sequential(
-            BasicBlock(in_channels, out_channels, stride, downsample=nn.Sequential(
-                nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=stride, bias=False),
-                nn.BatchNorm2d(out_channels)
-            )),
-            BasicBlock(out_channels, out_channels)
-        )
-
-    def forward(self, x):
-        x = self.conv1(x)
-        x = self.bn1(x)
+        x = self.conv(x)
+        x = self.bn(x)
         x = self.relu(x)
-        x = self.maxpool(x)
-
-        x1 = self.layer1(x)
-        x2 = self.layer2(x1)
-        x3 = self.layer3(x2)
-        x4 = self.layer4(x3)
-
-        return x1, x2, x3, x4
+        return x
 
 class DecoderBlock(nn.Module):
-    def __init__(self, in_channels, middle_channels, out_channels):
+    def __init__(self, in_channels, out_channels):
         super(DecoderBlock, self).__init__()
-        self.conv1 = nn.Conv2d(in_channels, middle_channels, kernel_size=3, stride=1, padding=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(middle_channels)
-        self.relu = nn.ReLU(inplace=True)
-        self.conv2 = nn.Conv2d(middle_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False)
-        self.bn2 = nn.BatchNorm2d(out_channels)
+        self.conv1 = Conv2dReLU(in_channels, out_channels, kernel_size=3, stride=1, padding=1)
+        self.attention1 = nn.Identity()
+        self.conv2 = Conv2dReLU(out_channels, out_channels, kernel_size=3, stride=1, padding=1)
+        self.attention2 = nn.Identity()
 
     def forward(self, x):
         x = self.conv1(x)
-        x = self.bn1(x)
-        x = self.relu(x)
+        x = self.attention1(x)
         x = self.conv2(x)
-        x = self.bn2(x)
+        x = self.attention2(x)
         return x
 
 class UnetDecoder(nn.Module):
-    def __init__(self, in_channels, middle_channels, out_channels):
+    def __init__(self):
         super(UnetDecoder, self).__init__()
         self.center = nn.Identity()
         self.blocks = nn.ModuleList([
-            DecoderBlock(in_channels, middle_channels, out_channels),
-            DecoderBlock(middle_channels + out_channels, middle_channels, out_channels // 2),
-            DecoderBlock(middle_channels + out_channels // 2, middle_channels // 2, out_channels // 4),
-            DecoderBlock(middle_channels // 2 + out_channels // 4, middle_channels // 4, out_channels // 8),
-            DecoderBlock(middle_channels // 4 + out_channels // 8, middle_channels // 8, out_channels // 16)
+            DecoderBlock(768, 256),
+            DecoderBlock(384, 128),
+            DecoderBlock(192, 64),
+            DecoderBlock(128, 32),
+            DecoderBlock(32, 16)
         ])
 
-    def forward(self, *x):
-        center = self.center(x[-1])
-        outputs = []
+    def forward(self, *features):
+        x = self.center(features[0])
         for i, block in enumerate(self.blocks):
-            if i == 0:
-                inputs = [center]
-            else:
-                inputs = [outputs[-1], x[i-1]]
-            outputs.append(block(*inputs))
-        return outputs[-1]
+            x = block(x)
+        return x
 
 class SegmentationHead(nn.Module):
-    def __init__(self, in_channels, out_channels):
+    def __init__(self):
         super(SegmentationHead, self).__init__()
-        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=1, padding=1)
-        self.activation = nn.ReLU(inplace=True)
+        self.conv = nn.Conv2d(16, 4, kernel_size=3, stride=1, padding=1)
+        self.identity = nn.Identity()
+        self.activation = nn.Identity()
 
     def forward(self, x):
-        x = self.conv1(x)
+        x = self.conv(x)
+        x = self.identity(x)
         x = self.activation(x)
         return x
 
 class self_net(nn.Module):
     def __init__(self):
         super(self_net, self).__init__()
-        self.encoder = ResNetEncoder()
-        self.decoder = UnetDecoder(512, 256, 16)
-        self.segmentation_head = SegmentationHead(16, 4)
+        self.encoder = nn.Sequential(
+            nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3, bias=False),
+            nn.BatchNorm2d(64),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=3, stride=2, padding=1),
+            nn.Sequential(
+                nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1, bias=False),
+                nn.BatchNorm2d(64),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=1, bias=False),
+                nn.BatchNorm2d(64)
+            ),
+            nn.Sequential(
+                nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1, bias=False),
+                nn.BatchNorm2d(128),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(128, 128, kernel_size=3, stride=1, padding=1, bias=False),
+                nn.BatchNorm2d(128),
+                nn.Sequential(
+                    nn.Conv2d(64, 128, kernel_size=1, stride=2, bias=False),
+                    nn.BatchNorm2d(128)
+                )
+            ),
+            nn.Sequential(
+                nn.Conv2d(128, 256, kernel_size=3, stride=2, padding=1, bias=False),
+                nn.BatchNorm2d(256),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1, bias=False),
+                nn.BatchNorm2d(256),
+                nn.Sequential(
+                    nn.Conv2d(128, 256, kernel_size=1, stride=2, bias=False),
+                    nn.BatchNorm2d(256)
+                )
+            ),
+            nn.Sequential(
+                nn.Conv2d(256, 512, kernel_size=3, stride=2, padding=1, bias=False),
+                nn.BatchNorm2d(512),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(512, 512, kernel_size=3, stride=1, padding=1, bias=False),
+                nn.BatchNorm2d(512),
+                nn.Sequential(
+                    nn.Conv2d(256, 512, kernel_size=1, stride=2, bias=False),
+                    nn.BatchNorm2d(512)
+                )
+            )
+        )
+        self.decoder = UnetDecoder()
+        self.segmentation_head = SegmentationHead()
 
     def forward(self, x):
-        x1, x2, x3, x4 = self.encoder(x)
-        x = self.decoder(x4, x3, x2, x1)
-        x = self.segmentation_head(x)
-        return x
-
+        features = self.encoder(x)
+        x = self.decoder(features)
+        logits = self.segmentation_head(x)
+        return logits
