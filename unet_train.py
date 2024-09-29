@@ -233,6 +233,7 @@ if __name__ == '__main__':
             in_channels=3,                  # model input channels (1 for gray-scale images, 3 for RGB, etc.)
             classes=4,                      # model output channels (number of classes in your dataset)
             encoder_depth=6,
+            decoder_channels=(256, 128, 64, 32, 16,8),
             )
             total_params = sum(p.numel() for p in model.parameters())
             logging.info(f"模型的参数量: {total_params / 1e6:.2f}M")
