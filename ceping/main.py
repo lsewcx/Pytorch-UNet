@@ -129,6 +129,12 @@ def get_ious_dir(preds_dir: str, anns_dir: str) -> Tuple[float, float, float, fl
 
 if __name__ == '__main__':
     iou1, iou2, iou3, mIoU = get_ious_dir('./test_ground_truths', './test_predictions')
-    print(f'Class 1 IoU: {iou1}, Class 2 IoU: {iou2}, Class 3 IoU: {iou3}, mIoU: {mIoU}')
+    print(f'Class 1 IoU: {iou1}')
+    print(f'Class 2 IoU: {iou2}')
+    print(f'Class 3 IoU: {iou3}')
+    print(f'mIoU: {mIoU}')
     iou1, iou2, iou3, mIoU = get_ious_dir('./test_ground_truths', './baseline_predictions')
-    print(f'Class 1 IoU: {iou1}, Class 2 IoU: {iou2}, Class 3 IoU: {iou3}, mIoU: {mIoU}')
+    print(f'Class 1 IoU: {iou1}')
+    print(f'Class 2 IoU: {iou2}')
+    print(f'Class 3 IoU: {iou3}')
+    print(f'mIoU: {mIoU}')
