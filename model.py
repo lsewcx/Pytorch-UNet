@@ -1,216 +1,208 @@
-# import torch
-# import torch.nn as nn
-# import torch.nn.functional as F
-
-
-
-
-# class DoubleConv(nn.Module):
-#     """(convolution => [BN] => ReLU) * 2"""
-
-#     def __init__(self, in_channels, out_channels, mid_channels=None):
-#         super().__init__()
-#         if not mid_channels:
-#             mid_channels = out_channels
-#         self.double_conv = nn.Sequential(
-#             nn.Conv2d(in_channels, mid_channels, kernel_size=3, padding=1, bias=False),
-#             nn.BatchNorm2d(mid_channels),
-#             nn.ReLU(inplace=True),
-#             nn.Conv2d(mid_channels, out_channels, kernel_size=3, padding=1, bias=False),
-#             nn.BatchNorm2d(out_channels),
-#             nn.ReLU(inplace=True)
-#         )
-
-#     def forward(self, x):
-#         return self.double_conv(x)
-
-# class Down(nn.Module):
-#     """Downscaling with maxpool then double conv"""
-
-#     def __init__(self, in_channels, out_channels):
-#         super().__init__()
-#         self.maxpool_conv = nn.Sequential(
-#             nn.MaxPool2d(2),
-#             DoubleConv(in_channels, out_channels)
-#         )
-
-#     def forward(self, x):
-#         return self.maxpool_conv(x)
-
-# class Up(nn.Module):
-#     """Upscaling then double conv"""
-
-#     def __init__(self, in_channels, out_channels, bilinear=True):
-#         super().__init__()
-
-#         # if bilinear, use the normal convolutions to reduce the number of channels
-#         if bilinear:
-#             self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
-#             self.conv = DoubleConv(in_channels, out_channels, in_channels // 2)
-#         else:
-#             self.up = nn.ConvTranspose2d(in_channels, in_channels // 2, kernel_size=2, stride=2)
-#             self.conv = DoubleConv(in_channels, out_channels)
-
-#     def forward(self, x1, x2):
-#         x1 = self.up(x1)
-#         # input is CHW
-#         diffY = x2.size()[2] - x1.size()[2]
-#         diffX = x2.size()[3] - x1.size()[3]
-
-#         x1 = F.pad(x1, [diffX // 2, diffX - diffX // 2,
-#                         diffY // 2, diffY - diffY // 2])
-#         x = torch.cat([x2, x1], dim=1)
-#         return self.conv(x)
-
-# class OutConv(nn.Module):
-#     def __init__(self, in_channels, out_channels):
-#         super(OutConv, self).__init__()
-#         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=1)
-
-#     def forward(self, x):
-#         return self.conv(x)
-
-# class self_net(nn.Module):
-#     def __init__(self, n_channels=3, n_classes=4):
-#         super(self_net, self).__init__()
-#         self.n_channels = n_channels
-#         self.n_classes = n_classes
-#         self.bilinear = False
-
-#         self.inc = DoubleConv(n_channels, 64)  # 原来是64
-#         self.down1 = Down(64, 128)  # 原来是64, 128
-#         self.down2 = Down(128,256)  # 原来是128, 256
-#         self.down3 = Down(256,512)  # 原来是256, 512
-#         factor = 2 if self.bilinear else 1
-#         self.down4 = Down(512, 1024 // factor)  # 原来是512, 1024 // factor
-
-
-#         self.up1 = Up(1024, 512 // factor, self.bilinear)  # 原来是1024, 512 // factor
-#         self.up2 = Up(512, 256 // factor, self.bilinear)  # 原来是512, 256 // factor
-#         self.up3 = Up(256, 128 // factor, self.bilinear)  # 原来是256, 128 // factor
-#         self.up4 = Up(128, 64, self.bilinear)  # 原来是128, 64
-#         self.outc = OutConv(64, n_classes)  # 原来是64
-
-#     def forward(self, x):
-#         # 下采样部分
-#         x1 = self.inc(x)
-#         x2 = self.down1(x1)
-#         x3 = self.down2(x2)
-#         x4 = self.down3(x3)
-#         x5 = self.down4(x4)
-        
-#         # 移除了self.ppm(x5)
-        
-#         # 上采样部分
-#         x = self.up1(x5, x4)
-#         x = self.up2(x, x3)
-#         x = self.up3(x, x2)
-#         x = self.up4(x, x1)
-#         logits = self.outc(x)
-#         return logits
-
-
-import torch.nn as nn
 import torch
-import torchvision
+import torch.nn as nn
 import torch.nn.functional as F
 
-class DecoderBlock(nn.Module):
-    """Upscaling then double conv"""
 
-    def __init__(self, conv_in_channels, conv_out_channels, up_in_channels=None, up_out_channels=None):
+
+class Downsample(nn.Module):
+    def __init__(self, in_channels, out_channels, stride):
         super().__init__()
-        """
-        eg:
-        decoder1:
-        up_in_channels      : 1024,     up_out_channels     : 512
-        conv_in_channels    : 1024,     conv_out_channels   : 512
-
-        decoder5:
-        up_in_channels      : 64,       up_out_channels     : 64
-        conv_in_channels    : 128,      conv_out_channels   : 64
-        """
-        if up_in_channels==None:
-            up_in_channels=conv_in_channels
-        if up_out_channels==None:
-            up_out_channels=conv_out_channels
-
-        self.up = nn.ConvTranspose2d(up_in_channels, up_out_channels, kernel_size=2, stride=2)
-        self.conv = nn.Sequential(
-            nn.Conv2d(conv_in_channels, conv_out_channels, kernel_size=3, padding=1, bias=False),
-            nn.BatchNorm2d(conv_out_channels),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(conv_out_channels, conv_out_channels, kernel_size=3, padding=1, bias=False),
-            nn.BatchNorm2d(conv_out_channels),
-            nn.ReLU(inplace=True)
+        self.conv = nn.Conv2d(
+            in_channels, out_channels, kernel_size=1, stride=stride, bias=False
         )
+        self.bn = nn.BatchNorm2d(out_channels)
 
-    # x1-upconv , x2-downconv
-    def forward(self, x1, x2):
-        x1 = self.up(x1)
-        
-        # 调整 x1 的大小以匹配 x2
-        diffY = x2.size()[2] - x1.size()[2]
-        diffX = x2.size()[3] - x1.size()[3]
-
-        x1 = F.pad(x1, [diffX // 2, diffX - diffX // 2,
-                        diffY // 2, diffY - diffY // 2])
-        
-        x = torch.cat([x1, x2], dim=1)
-        return self.conv(x)
-
-class self_net(nn.Module):
-    def __init__(self, num_classes=4):
-        super().__init__()
-        resnet34 = torchvision.models.resnet34(pretrained=True)
-        filters = [64, 128, 256, 512]
-
-        self.firstlayer = nn.Sequential(*list(resnet34.children())[:3])
-        self.maxpool = list(resnet34.children())[3]
-        self.encoder1 = resnet34.layer1
-        self.encoder2 = resnet34.layer2
-        self.encoder3 = resnet34.layer3
-        self.encoder4 = resnet34.layer4
-
-        self.bridge = nn.Sequential(
-            nn.Conv2d(filters[3], filters[3]*2, kernel_size=3, padding=1, bias=False),
-            nn.BatchNorm2d(filters[3]*2),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(kernel_size=2, stride=2)
-            
-        )
-
-        self.decoder1 = DecoderBlock(conv_in_channels=filters[3]*2, conv_out_channels=filters[3])
-        self.decoder2 = DecoderBlock(conv_in_channels=filters[3], conv_out_channels=filters[2])
-        self.decoder3 = DecoderBlock(conv_in_channels=filters[2], conv_out_channels=filters[1])
-        self.decoder4 = DecoderBlock(conv_in_channels=filters[1], conv_out_channels=filters[0])
-        self.decoder5 = DecoderBlock(
-            conv_in_channels=filters[1], conv_out_channels=filters[0], up_in_channels=filters[0], up_out_channels=filters[0]
-        )
-
-        self.lastlayer = nn.Sequential(
-            nn.ConvTranspose2d(in_channels=filters[0], out_channels=filters[0], kernel_size=2, stride=2),
-            nn.Conv2d(filters[0], num_classes, kernel_size=3, padding=1, bias=False)
-        )
-    
     def forward(self, x):
-        e1 = self.firstlayer(x)
-        maxe1 = self.maxpool(e1)
-        e2 = self.encoder1(maxe1)
-        e3 = self.encoder2(e2)
-        e4 = self.encoder3(e3)
-        e5 = self.encoder4(e4)
-        
-        c = self.bridge(e5)
-        
-        d1 = self.decoder1(c, e5)
-        d2 = self.decoder2(d1, e4)
-        d3 = self.decoder3(d2, e3)
-        d4 = self.decoder4(d3, e2)
-        d5 = self.decoder5(d4, e1)
+        x = self.conv(x)
+        x = self.bn(x)
+        return x
 
-        out = self.lastlayer(d5)
+
+class BasicBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, stride=1, downsample=None):
+        super().__init__()
+        self.conv1 = nn.Conv2d(
+            in_channels,
+            out_channels,
+            kernel_size=1,
+            stride=stride,
+            bias=False,
+        )
+        self.bn1 = nn.BatchNorm2d(out_channels)
+        self.conv2 = nn.Conv2d(
+            out_channels,
+            out_channels,
+            kernel_size=3,
+            stride=1,
+            padding=1,
+            bias=False,
+        )
+        self.bn2 = nn.BatchNorm2d(out_channels)
+
+        self.downsample = downsample
+        self.relu = nn.ReLU(inplace=True)
+
+    def forward(self, x):
+        identity = x
+
+        out = self.conv1(x)
+        out = self.bn1(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+
+        if self.downsample is not None:
+            identity = self.downsample(x)
+
+        out += identity
+        out = self.relu(out)
 
         return out
 
+
+# Decoder: UNet
+class DoubleConv(nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super().__init__()
+
+        self.conv = nn.Sequential(
+            # conv1
+            nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True),
+            # conv2
+            nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True),
+        )
+
+    def forward(self, x):
+        x = self.conv(x)
+
+        return x
+
+
+class Up(nn.Module):
+    def __init__(self, in_channels, up_channels, concat_channels, out_channels):
+        super().__init__()
+
+        self.up_conv = nn.ConvTranspose2d(
+            in_channels, up_channels, kernel_size=2, stride=2
+        )
+
+        self.conv = DoubleConv(concat_channels, out_channels)
+
+    def forward(self, x, encoder_x):
+        x = self.up_conv(x)
+
+        x = torch.cat([encoder_x, x], dim=1)
+
+        x = self.conv(x)
+
+        return x
+
+
+# full model: ResNet34_UNet
+class self_net(nn.Module):
+    def __init__(self, n_classes=1):
+        super().__init__()
+        self.__name__ = "ResNet34_UNet"
+
+        # encoder: ResNet34
+        self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3, bias=False)
+        self.bn1 = nn.BatchNorm2d(64)
+        self.relu1 = nn.ReLU(inplace=True)
+
+        self.maxpool1 = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+        self.layer1 = nn.Sequential(
+            BasicBlock(64, 64),
+            BasicBlock(64, 64),
+            BasicBlock(64, 64),
+        )
+
+        self.layer2 = nn.Sequential(
+            BasicBlock(64, 128, stride=2, downsample=Downsample(64, 128, stride=2)),
+            BasicBlock(128, 128),
+            BasicBlock(128, 128),
+            BasicBlock(128, 128),
+        )
+
+        self.layer3 = nn.Sequential(
+            BasicBlock(128, 256, stride=2, downsample=Downsample(128, 256, stride=2)),
+            BasicBlock(256, 256),
+            BasicBlock(256, 256),
+            BasicBlock(256, 256),
+            BasicBlock(256, 256),
+            BasicBlock(256, 256),
+        )
+
+        self.layer4 = nn.Sequential(
+            BasicBlock(256, 512, stride=2, downsample=Downsample(256, 512, stride=2)),
+            BasicBlock(512, 512),
+            BasicBlock(512, 512),
+        )
+
+        # concat layer3
+        self.up1 = Up(
+            in_channels=512,
+            up_channels=256,
+            concat_channels=256 + 256,
+            out_channels=256,
+        )
+
+        # concat layer2
+        self.up2 = Up(
+            in_channels=256,
+            up_channels=128,
+            concat_channels=128 + 128,
+            out_channels=128,
+        )
+
+        # concat maxpool_layer1
+        self.up3 = Up(
+            in_channels=128,
+            up_channels=128,
+            concat_channels=128 + 64,
+            out_channels=64,
+        )
+
+        # concat conv1_bn_1_relu1
+        self.up4 = Up(
+            in_channels=64,
+            up_channels=64,
+            concat_channels=64 + 64,
+            out_channels=64,
+        )
+
+        self.up5 = nn.ConvTranspose2d(
+            in_channels=64, out_channels=32, kernel_size=2, stride=2
+        )
+
+        self.out_conv = nn.Conv2d(in_channels=32, out_channels=n_classes, kernel_size=1)
+
+    def forward(self, x):
+        # encoder
+        block1 = self.conv1(x)
+        block1 = self.bn1(block1)
+        block1 = self.relu1(block1)
+
+        block2 = self.maxpool1(block1)
+        block2 = self.layer1(block2)
+
+        block3 = self.layer2(block2)
+
+        block4 = self.layer3(block3)
+
+        block5 = self.layer4(block4)
+
+        # decoder
+        x = self.up1(block5, block4)
+        x = self.up2(x, block3)
+        x = self.up3(x, block2)
+        x = self.up4(x, block1)
+        x = self.up5(x)
+
+        out = self.out_conv(x)
+
+        return out
 
