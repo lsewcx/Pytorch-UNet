@@ -50,7 +50,6 @@ def train_model(
 ):
     # 将模型移动到指定设备
     model.to(device)
-    
     # 1. Create dataset
     try:
         dataset = CarvanaDataset(dir_img, dir_mask, img_scale)
