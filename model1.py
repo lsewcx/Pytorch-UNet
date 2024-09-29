@@ -127,7 +127,7 @@ class DeepLabV2_ResNet101(nn.Sequential):
                 m.eval()
 
 class DeepLabV2_ResNet101_MSC(nn.Module):
-    def __init__(self, n_classes, n_blocks, atrous_rates, scales=None):
+    def __init__(self, n_classes = 4 , n_blocks=[3, 4, 23, 3], atrous_rates=[6, 12, 18, 24],scales=None):
         super(DeepLabV2_ResNet101_MSC, self).__init__()
         if scales is None:
             self.scales = [0.5, 0.75]
