@@ -90,7 +90,7 @@ def train_model(
                               lr=learning_rate, weight_decay=weight_decay, momentum=momentum, foreach=True)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'max', patience=5)  # goal: maximize Dice score
     grad_scaler = torch.cuda.amp.GradScaler(enabled=amp)
-    criterion = nn.CrossEntropyLoss() if model.n_classes > 1 else nn.BCEWithLogitsLoss()
+    criterion = nn.CrossEntropyLoss() 
     global_step = 0
     best_val_score = float('-inf')
 
@@ -102,26 +102,22 @@ def train_model(
             for batch in train_loader:
                 images, true_masks = batch['image'], batch['mask']
 
-                assert images.shape[1] == model.n_channels, \
-                    f'Network has been defined with {model.n_channels} input channels, ' \
-                    f'but loaded images have {images.shape[1]} channels. Please check that ' \
-                    'the images are loaded correctly.'
+                # assert images.shape[1] == model.n_channels, \
+                #     f'Network has been defined with {model.n_channels} input channels, ' \
+                #     f'but loaded images have {images.shape[1]} channels. Please check that ' \
+                #     'the images are loaded correctly.'
 
                 images = images.to(device=device, dtype=torch.float32, memory_format=torch.channels_last)
                 true_masks = true_masks.to(device=device, dtype=torch.long)
 
                 with torch.autocast(device.type if device.type != 'mps' else 'cpu', enabled=amp):
                     masks_pred = model(images)
-                    if model.n_classes == 1:
-                        loss = criterion(masks_pred.squeeze(1), true_masks.float())
-                        loss += dice_loss(F.sigmoid(masks_pred.squeeze(1)), true_masks.float(), multiclass=False)
-                    else:
-                        loss = criterion(masks_pred, true_masks)
-                        loss += dice_loss(
-                            F.softmax(masks_pred, dim=1).float(),
-                            F.one_hot(true_masks, model.n_classes).permute(0, 3, 1, 2).float(),
-                            multiclass=True
-                        )
+                    loss = criterion(masks_pred, true_masks)
+                    loss += dice_loss(
+                        F.softmax(masks_pred, dim=1).float(),
+                        F.one_hot(true_masks, 4).permute(0, 3, 1, 2).float(),
+                        multiclass=True
+                    )
 
                 optimizer.zero_grad(set_to_none=True)
                 grad_scaler.scale(loss).backward()
@@ -246,10 +242,10 @@ if __name__ == '__main__':
         raise ValueError(f'Unknown model name: {args.model}')
     logger.info(f'Network: {model.__class__.__name__}')
     model = model.to(memory_format=torch.channels_last)
-
-    logger.info(f'Network:\n'
-                 f'\t{model.n_channels} input channels\n'
-                 f'\t{model.n_classes} output channels (classes)\n')
+    
+    # logger.info(f'Network:\n'
+    #              f'\t{model.n_channels} input channels\n'
+    #              f'\t{model.n_classes} output channels (classes)\n')
 
     if args.load:
         state_dict = torch.load(args.load, map_location=device)
