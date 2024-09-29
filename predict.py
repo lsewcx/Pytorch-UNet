@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from PIL import Image
 from torchvision import transforms
 from utils.data_loading import BasicDataset
-# from model import self_net
+from model import self_net
 import json
 from utils.utils import plot_img_and_mask
 import time  # 导入time模块
@@ -77,18 +77,19 @@ if __name__ == '__main__':
     # elif args.model_name == 'UNet':
     #     net = UNet(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
     if args.model_name == 'selfnet':
-        import segmentation_models_pytorch as smp
-            # model = smp.DeepLabV3Plus(
-            #     encoder_name="resnet34",        # choose encoder, e.g. mobilenet_v2 or efficientnet-b7
-            #     in_channels=3,                  # model input channels (1 for gray-scale images, 3 for RGB, etc.)
-            #     classes=4,                      # model output channels (number of classes in your dataset)
-            # )
-        net = smp.Unet(
-        encoder_name="resnet18",        # choose encoder, e.g. mobilenet_v2 or efficientnet-b7
-        encoder_weights="imagenet",     # use `imagenet` pre-trained weights for encoder initialization
-        in_channels=3,                  # model input channels (1 for gray-scale images, 3 for RGB, etc.)
-        classes=4,                      # model output channels (number of classes in your dataset)
-        )
+        net = self_net()
+        # import segmentation_models_pytorch as smp
+        #     # model = smp.DeepLabV3Plus(
+        #     #     encoder_name="resnet34",        # choose encoder, e.g. mobilenet_v2 or efficientnet-b7
+        #     #     in_channels=3,                  # model input channels (1 for gray-scale images, 3 for RGB, etc.)
+        #     #     classes=4,                      # model output channels (number of classes in your dataset)
+        #     # )
+        # net = smp.Unet(
+        # encoder_name="resnet18",        # choose encoder, e.g. mobilenet_v2 or efficientnet-b7
+        # encoder_weights="imagenet",     # use `imagenet` pre-trained weights for encoder initialization
+        # in_channels=3,                  # model input channels (1 for gray-scale images, 3 for RGB, etc.)
+        # classes=4,                      # model output channels (number of classes in your dataset)
+        # )
         # net = self_net(n_channels=3, n_classes=args.classes)
     else:
         raise ValueError(f'Unknown model name: {args.model_name}')

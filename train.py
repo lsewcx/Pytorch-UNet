@@ -225,25 +225,25 @@ if __name__ == '__main__':
     # elif args.model == 'UNetPlusPlusInception':
     #     model = UNetPlusPlusInception(n_classes=args.classes, n_channels=3, use_deconv=True, align_corners=False, is_ds=True)
     if args.model == 'selfnet':
-        # model = self_net()
-        try:
-            import segmentation_models_pytorch as smp
-            # model = smp.DeepLabV3Plus(
-            #     encoder_name="resnet34",        # choose encoder, e.g. mobilenet_v2 or efficientnet-b7
-            #     in_channels=3,                  # model input channels (1 for gray-scale images, 3 for RGB, etc.)
-            #     classes=4,                      # model output channels (number of classes in your dataset)
-            # )
-            model = smp.Unet(
-            encoder_name="resnet18",        # choose encoder, e.g. mobilenet_v2 or efficientnet-b7
-            encoder_weights="imagenet",     # use `imagenet` pre-trained weights for encoder initialization
-            in_channels=3,                  # model input channels (1 for gray-scale images, 3 for RGB, etc.)
-            classes=4,                      # model output channels (number of classes in your dataset)
-            )
-            total_params = sum(p.numel() for p in model.parameters())
-            logging.info(f"模型的参数量: {total_params / 1e6:.2f}M")
+        model = self_net()
+        # try:
+        #     import segmentation_models_pytorch as smp
+        #     # model = smp.DeepLabV3Plus(
+        #     #     encoder_name="resnet34",        # choose encoder, e.g. mobilenet_v2 or efficientnet-b7
+        #     #     in_channels=3,                  # model input channels (1 for gray-scale images, 3 for RGB, etc.)
+        #     #     classes=4,                      # model output channels (number of classes in your dataset)
+        #     # )
+        #     model = smp.Unet(
+        #     encoder_name="resnet18",        # choose encoder, e.g. mobilenet_v2 or efficientnet-b7
+        #     encoder_weights="imagenet",     # use `imagenet` pre-trained weights for encoder initialization
+        #     in_channels=3,                  # model input channels (1 for gray-scale images, 3 for RGB, etc.)
+        #     classes=4,                      # model output channels (number of classes in your dataset)
+        #     )
+        #     total_params = sum(p.numel() for p in model.parameters())
+        #     logging.info(f"模型的参数量: {total_params / 1e6:.2f}M")
 
-        except ImportError:
-            pass
+        # except ImportError:
+        #     pass
     else:
         raise ValueError(f'Unknown model name: {args.model}')
     logger.info(f'Network: {model.__class__.__name__}')

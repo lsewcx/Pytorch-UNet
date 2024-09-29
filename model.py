@@ -175,19 +175,6 @@ class SegmentationHead(nn.Module):
         x = self.activation(x)
         return x
 
-class Unet(nn.Module):
-    def __init__(self, encoder, decoder, segmentation_head):
-        super(Unet, self).__init__()
-        self.encoder = encoder
-        self.decoder = decoder
-        self.segmentation_head = segmentation_head
-
-    def forward(self, x):
-        features = self.encoder(x)
-        decoder_output = self.decoder(*features)
-        masks = self.segmentation_head(decoder_output)
-        return masks
-
 class ResNetEncoder(nn.Module):
     def __init__(self):
         super(ResNetEncoder, self).__init__()
@@ -212,8 +199,29 @@ class ResNetEncoder(nn.Module):
         x4 = self.layer4(x3)
         return [x4, x3, x2, x1]
 
-# 创建模型
-encoder = ResNetEncoder()
-decoder = UnetDecoder()
-segmentation_head = SegmentationHead(in_channels=16, out_channels=4)
-model = Unet(encoder, decoder, segmentation_head)
+class Unet(nn.Module):
+    def __init__(self, encoder, decoder, segmentation_head):
+        super(Unet, self).__init__()
+        self.encoder = encoder
+        self.decoder = decoder
+        self.segmentation_head = segmentation_head
+
+    def forward(self, x):
+        features = self.encoder(x)
+        decoder_output = self.decoder(*features)
+        masks = self.segmentation_head(decoder_output)
+        return masks
+
+class self_net(nn.Module):
+    def __init__(self, n_channels=3, n_classes=4):
+        super(self_net, self).__init__()
+        self.encoder = ResNetEncoder()
+        self.decoder = UnetDecoder()
+        self.segmentation_head = SegmentationHead(in_channels=16, out_channels=n_classes)
+
+    def forward(self, x):
+        features = self.encoder(x)
+        decoder_output = self.decoder(*features)
+        masks = self.segmentation_head(decoder_output)
+        return masks
+
