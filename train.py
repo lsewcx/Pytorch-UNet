@@ -20,6 +20,7 @@ from model import self_net
 from utils.data_loading import BasicDataset, CarvanaDataset
 from utils.dice_score import dice_loss
 from model import self_net
+from torchsummary import summary
 
 
 dir_img = Path('./NEU_Seg-main/images/training')
@@ -244,6 +245,7 @@ if __name__ == '__main__':
             in_channels=3,                  # model input channels (1 for gray-scale images, 3 for RGB, etc.)
             classes=4,                      # model output channels (number of classes in your dataset)
             )
+            summary(model, input_size=(1, 3, 224, 224))  # 假设输入图像大小为 224x224
         except ImportError:
             pass
     else:
