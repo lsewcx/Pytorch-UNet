@@ -226,6 +226,8 @@ if __name__ == '__main__':
     #     model = UNetPlusPlusInception(n_classes=args.classes, n_channels=3, use_deconv=True, align_corners=False, is_ds=True)
     if args.model == 'selfnet':
         model = self_net()
+        total_params = sum(p.numel() for p in model.parameters())
+        logging.info(f"模型的参数量: {total_params / 1e6:.2f}M")
         # try:
         #     import segmentation_models_pytorch as smp
         #     # model = smp.DeepLabV3Plus(
