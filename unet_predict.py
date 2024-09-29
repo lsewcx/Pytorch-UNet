@@ -72,7 +72,19 @@ if __name__ == '__main__':
     elif args.model_name == 'UNetPlusPlusInception':
         net = UNetPlusPlusInception(n_channels=3, n_classes=args.classes, use_deconv=True, align_corners=False, is_ds=True)
     elif args.model_name == 'UNet':
-        net = UNet(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
+        try:
+            import segmentation_models_pytorch as smp
+            net = smp.Unet(
+            encoder_name="resnet50",        # choose encoder, e.g. mobilenet_v2 or efficientnet-b7
+            encoder_weights="imagenet",     # use `imagenet` pre-trained weights for encoder initialization
+            in_channels=3,                  # model input channels (1 for gray-scale images, 3 for RGB, etc.)
+            classes=4,                      # model output channels (number of classes in your dataset)
+            )
+            total_params = sum(p.numel() for p in model.parameters())
+            logging.info(f"模型的参数量: {total_params / 1e6:.2f}M")
+
+        except ImportError:
+            pass
     else:
         raise ValueError(f'Unknown model name: {args.model_name}')
 
