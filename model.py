@@ -104,7 +104,7 @@ class Up(nn.Module):
 
 # full model: ResNet34_UNet
 class self_net(nn.Module):
-    def __init__(self, n_classes=1):
+    def __init__(self, n_classes=4):
         super().__init__()
         self.__name__ = "ResNet34_UNet"
 
