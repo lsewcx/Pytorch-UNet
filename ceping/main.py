@@ -1,73 +1,134 @@
-import os
+from typing import Tuple, List
+from warnings import warn
+from pathlib import Path
+from PIL import Image
 import numpy as np
+import torch
 
-def load_npy_files(pred_folder_path, gt_folder_path, file_prefix):
-    preds_list = []
-    targets_list = []
-    for pred_file_name in os.listdir(pred_folder_path):
-        if pred_file_name.endswith('.npy'):
-            file_id = pred_file_name.replace(file_prefix, '').replace('.npy', '')
-            gt_file_name = f'ground_truth_{file_id}.npy'
-            pred_file_path = os.path.join(pred_folder_path, pred_file_name)
-            gt_file_path = os.path.join(gt_folder_path, gt_file_name)
-            if os.path.exists(pred_file_path) and os.path.exists(gt_file_path):
-                preds = np.load(pred_file_path).astype(np.int64)
-                targets = np.load(gt_file_path).astype(np.int64)
-                preds_list.append(preds)
-                targets_list.append(targets)
-            else:
-                print(f"文件 {pred_file_name} 或 {gt_file_name} 不存在，跳过。")
 
-    if preds_list and targets_list:
-        preds = np.stack(preds_list)
-        targets = np.stack(targets_list)
-        return preds, targets
-    else:
-        return None, None
+def get_iandu_path(predPath: str, annPath: str, classIdx: int) -> Tuple[int, int]:
+    """
+    This method calculate a prediction's a specified class iou from its ann with their paths.
+    We use "PIL.Image.open" to open a image, then calculate and return the i nad u.
+    "pred" and "ann" should contain uint8-like values from 0 to 3.
 
-def calculate_iou(preds, targets, num_classes, exclude_background=True):
-    ious = []
-    start_cls = 1 if exclude_background else 0  # 如果排除背景，从类别1开始，否则从类别0开始
-    for cls in range(start_cls, num_classes):
-        pred_cls = (preds == cls)
-        target_cls = (targets == cls)
+    Args:
+        predPath: Your single image prediction's path, e.g. with suffix "png" or ...
+        annPath: Your single image annotation's path, e.g. with suffix "png" or ...
+        classIdx: Your specified class index.
 
-        intersection = np.logical_and(pred_cls, target_cls).sum()
-        union = np.logical_or(pred_cls, target_cls).sum()
+    Returns:
+        i, u: intersection and union respectively.
+    """
+    pred = np.array(Image.open(predPath).convert('L'))
+    ann = np.array(Image.open(annPath).convert('L'))
+    return get_iandu_array(pred, ann, classIdx)
 
-        if union == 0:
-            iou = float('nan')  # 如果没有该类别的预测或目标，IoU为NaN
-        else:
-            iou = intersection / union
+
+def get_iandu_npy(predPath: str, annPath, classIdx: int) -> Tuple[int, int]:
+    """
+    This method is similar to "get_iandu_path".
+    We use "numpy.load" to open a .npy file, then calculate and return the i and u.
+    "pred" and "ann" should contain uint8-like values from 0 to 3.
+
+    Args:
+        predPath: Your single .npy prediction's path.
+        annPath: Your single .npy annotation's path.
+        classIdx: Your specified class index.
         
-        ious.append(iou)
+    Returns:
+        i, u: intersection and union respectively.
+    """
+    pred = np.load(predPath)
+    ann = np.load(annPath)
+    return get_iandu_array(pred, ann, classIdx)
 
-    miou = np.nanmean(ious)  # 计算mIoU，排除NaN值
-    return miou, ious
 
-def segmiou(pred_folder_path, gt_folder_path, file_prefix, num_classes, exclude_background=True):
-    preds, targets = load_npy_files(pred_folder_path, gt_folder_path, file_prefix)
+def get_iandu_array(pred, ann, classIdx: int) -> Tuple[int, int]:
+    """
+    This method calculate the intersection and union between array-like "pred" and "ann".
 
-    if preds is None or targets is None:
-        print("预测或目标文件加载失败。")
-        return float('nan'), []
+    Args:
+        pred: Your prediction array.
+        ann: Your annotation array.
+        classIdx: Your target class index.
 
-    miou, ious = calculate_iou(preds, targets, num_classes, exclude_background)
-    return miou, ious
+    Returns:
+        i, u: intersection and union respectively.
+    """
+    if isinstance(pred, torch.Tensor): pred = pred.numpy()
+    if isinstance(ann, torch.Tensor): ann = ann.numpy()
+    if not (0 <= classIdx and classIdx <= 3): raise ValueError(f'You should pass "classIdx" between 0 and 3 but you got {classIdx}.')
+    if not (pred.shape == ann.shape):
+        raise ValueError(f'You should pass "pred" and "ann" with same shape but you got a "pred" shape {pred.shape} and an "ann" shape {ann.shape}.')
+    if not (pred.shape[-2:] == (200, 200)): warn("You'd better use array of (200, 200) shape but we didn't test this.", UserWarning)
+    i = np.sum(np.logical_and(np.equal(pred, ann), np.equal(ann, classIdx)))
+    u = np.sum(np.logical_or(np.equal(pred, classIdx), np.equal(ann, classIdx)))
+    return i, u
 
-if __name__ == "__main__":
-    pred_dir = 'test_predictions/'
-    base_dir = 'baseline_predictions/'
-    gt_dir = 'test_ground_truths/'
-    num_classes = 4  # 总的分类数
-    exclude_background = True  # 是否排除背景类别
 
-    pred_miou, pred_per_class_iou = segmiou(pred_dir, gt_dir, 'prediction_', num_classes, exclude_background)
-    base_miou, base_per_class_iou = segmiou(base_dir, gt_dir, 'prediction_', num_classes, exclude_background)
+def get_arrays_dir(dir: str) -> List[np.ndarray]:
+    """
+    This method returns "numpy.ndarray"s in uint8-like dtype in a directory.
+    We transform files into numpy.ndarray and save them in a "list" then return.
+    The searching order is "png, jpg, npy" and we only support them.
+
+    Args:
+        dir: Your directory path which saves many files.
+
+    Returns:
+        arrays: Lists of your ndarrays.
+    """
+    dir, xs = Path(dir), None
+    assert dir.is_dir()
+
+    pngs = sorted(dir.glob('*.png'))
+    if len(pngs) == 840: xs = pngs
+    jpgs = sorted(dir.glob('*.jpg'))
+    if len(jpgs) == 840: xs = jpgs
+    if xs is not None:
+        return [np.array(Image.open(p).convert('L')) for p in xs]
+
+    npys = sorted(dir.glob('*.npy'))
+    if len(npys) == 840: xs = npys
+    if xs is not None:
+        return [np.load(p) for p in xs]
+
+    raise FileNotFoundError('Missing file in test directory.')
+
+
+def get_ious_dir(preds_dir: str, anns_dir: str) -> Tuple[float, float, float, float]:
+    """
+    This method get 2 directory and transform them into arrays, then calculate the 3 types of iou and mIoU.
     
-    for i, iou in enumerate(pred_per_class_iou, start=1 if exclude_background else 0):
-        print(f"预测 Class {i} IoU: {iou}")
-    print(f"预测 mIoU: {pred_miou}")
-    for i, iou in enumerate(base_per_class_iou, start=1 if exclude_background else 0):
-        print(f"基线 Class {i} IoU: {iou}")
-    print(f"基线 mIoU: {base_miou}")
+    Args:
+        preds_dir: Your directory where predictions are saved.
+        anns_dir: Your directory where annotations are saved.
+
+    Returns:
+        iou_inclusions, iou_patches, iou_scratches, mIoU: Same as name.
+    """
+    preds = get_arrays_dir(preds_dir)
+    anns = get_arrays_dir(anns_dir)
+    # We did not use "re" to strongly assert two list are matched here but you can
+
+    i1, u1, i2, u2, i3, u3 = 0, 0, 0, 0, 0, 0
+    for pred, ann in zip(preds, anns):
+        i, u = get_iandu_array(pred, ann, 1)
+        i1, u1 = i1 + i, u1 + u
+
+        i, u = get_iandu_array(pred, ann, 2)
+        i2, u2 = i2 + i, u2 + u
+
+        i, u = get_iandu_array(pred, ann, 3)
+        i3, u3 = i3 + i, u3 + u
+    iou1, iou2, iou3 = i1 / u1, i2 / u2, i3 / u3
+    mIoU = (iou1 + iou2 + iou3) / 3
+    return iou1, iou2, iou3, mIoU
+
+
+if __name__ == '__main__':
+    iou1, iou2, iou3, mIoU = get_ious_dir('./test_ground_truths', './test_predictions')
+    print(f'Class 1 IoU: {iou1}, Class 2 IoU: {iou2}, Class 3 IoU: {iou3}, mIoU: {mIoU}')
+    iou1, iou2, iou3, mIoU = get_ious_dir('./test_ground_truths', './baseline_predictions')
+    print(f'Class 1 IoU: {iou1}, Class 2 IoU: {iou2}, Class 3 IoU: {iou3}, mIoU: {mIoU}')
