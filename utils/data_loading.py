@@ -11,6 +11,7 @@ from os.path import splitext, isfile, join
 from pathlib import Path
 from torch.utils.data import Dataset
 from tqdm import tqdm
+import albumentations as A
 
 def load_image(filename):
     ext = splitext(filename)[1]
@@ -56,6 +57,17 @@ class BasicDataset(Dataset):
 
         self.mask_values = list(sorted(np.unique(np.concatenate(unique), axis=0).tolist()))
         logging.info(f'Unique mask values: {self.mask_values}')
+        self.aug = A.Compose([
+            A.VerticalFlip(p=0.5),
+            A.RandomRotate90(p=0.5),
+            A.OneOf([
+                A.ElasticTransform(alpha=120, sigma=120 * 0.05, alpha_affine=120 * 0.03, p=0.5),
+                A.GridDistortion(p=0.5),
+                A.OpticalDistortion(distort_limit=2, shift_limit=0.5, p=1)
+                ], p=0.8),
+            A.CLAHE(p=0.8),
+            A.RandomBrightnessContrast(p=0.8),
+            A.RandomGamma(p=0.8)])
 
     def __len__(self):
         return len(self.ids)
@@ -106,7 +118,9 @@ class BasicDataset(Dataset):
 
         img = self.preprocess(self.mask_values, img, self.scale, is_mask=False)
         mask = self.preprocess(self.mask_values, mask, self.scale, is_mask=True)
-
+        augmented = self.aug(image=img, mask=mask)
+        img = augmented['image']
+        mask = augmented['mask']
         return {
             'image': torch.as_tensor(img.copy()).float().contiguous(),
             'mask': torch.as_tensor(mask.copy()).long().contiguous()
