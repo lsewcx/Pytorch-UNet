@@ -57,17 +57,20 @@ class BasicDataset(Dataset):
 
         self.mask_values = list(sorted(np.unique(np.concatenate(unique), axis=0).tolist()))
         logging.info(f'Unique mask values: {self.mask_values}')
+
+        # Initialize augmentation
         self.aug = A.Compose([
             A.VerticalFlip(p=0.5),
             A.RandomRotate90(p=0.5),
             A.OneOf([
-                A.ElasticTransform(alpha=120, sigma=120 * 0.05, alpha_affine=None, p=0.5),  # 将 alpha_affine 设置为 None
+                A.ElasticTransform(alpha=120, sigma=120 * 0.05, alpha_affine=None, p=0.5),
                 A.GridDistortion(p=0.5),
                 A.OpticalDistortion(distort_limit=2, shift_limit=0.5, p=1)
-                ], p=0.8),
-            A.Resize(224, 224),  # 调整图像大小
+            ], p=0.8),
+            A.Resize(224, 224),
             A.RandomBrightnessContrast(p=0.8),
-            A.RandomGamma(p=0.8)],is_check_shapes=False)
+            A.RandomGamma(p=0.8)
+        ], is_check_shapes=False)
 
     def __len__(self):
         return len(self.ids)
@@ -75,12 +78,10 @@ class BasicDataset(Dataset):
     @staticmethod
     def preprocess(mask_values, pil_img, scale, is_mask):
         w, h = pil_img.size
-        # newW, newH = int(scale * w), int(scale * h)
-        newW , newH = 224,224
+        newW, newH = 224, 224
         assert newW > 0 and newH > 0, 'Scale is too small, resized images would have no pixel'
         pil_img = pil_img.resize((newW, newH), resample=Image.NEAREST if is_mask else Image.BICUBIC)
         img = np.asarray(pil_img)
-
         if is_mask:
             mask = np.zeros((newH, newW), dtype=np.int64)
             for i, v in enumerate(mask_values):
@@ -102,7 +103,6 @@ class BasicDataset(Dataset):
 
             return img
 
-
     def __getitem__(self, idx):
         name = self.ids[idx]
         mask_file = list(self.mask_dir.glob(name + self.mask_suffix + '.*'))
@@ -116,11 +116,17 @@ class BasicDataset(Dataset):
         assert img.size == mask.size, \
             f'Image and mask {name} should be the same size, but are {img.size} and {mask.size}'
 
-        img = self.preprocess(self.mask_values, img, self.scale, is_mask=False)
-        mask = self.preprocess(self.mask_values, mask, self.scale, is_mask=True)
+        # Convert PIL images to numpy arrays
+        img = np.array(img)
+        mask = np.array(mask)
+
+        # Apply augmentations
         augmented = self.aug(image=img, mask=mask)
         img = augmented['image']
         mask = augmented['mask']
+
+        img = self.preprocess(self.mask_values, Image.fromarray(img), self.scale, is_mask=False)
+        mask = self.preprocess(self.mask_values, Image.fromarray(mask), self.scale, is_mask=True)
         return {
             'image': torch.as_tensor(img.copy()).float().contiguous(),
             'mask': torch.as_tensor(mask.copy()).long().contiguous()
