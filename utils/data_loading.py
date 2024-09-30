@@ -66,6 +66,7 @@ class BasicDataset(Dataset):
                 A.OpticalDistortion(distort_limit=2, shift_limit=0.5, p=1)
                 ], p=0.8),
             A.CLAHE(p=0.8),
+            A.Resize(224, 224),  # 调整图像大小
             A.RandomBrightnessContrast(p=0.8),
             A.RandomGamma(p=0.8)])
 
