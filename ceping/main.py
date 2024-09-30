@@ -1,140 +1,117 @@
-from typing import Tuple, List
-from warnings import warn
-from pathlib import Path
-from PIL import Image
 import numpy as np
-import torch
+import os
 
-
-def get_iandu_path(predPath: str, annPath: str, classIdx: int) -> Tuple[int, int]:
+def fast_hist(a, b, n):
     """
-    This method calculate a prediction's a specified class iou from its ann with their paths.
-    We use "PIL.Image.open" to open a image, then calculate and return the i nad u.
-    "pred" and "ann" should contain uint8-like values from 0 to 3.
-
-    Args:
-        predPath: Your single image prediction's path, e.g. with suffix "png" or ...
-        annPath: Your single image annotation's path, e.g. with suffix "png" or ...
-        classIdx: Your specified class index.
-
-    Returns:
-        i, u: intersection and union respectively.
+    计算混淆矩阵
+    a: 标签，形状为(H×W,)
+    b: 预测结果，形状为(H×W,)
+    n: 类别总数
     """
-    pred = np.array(Image.open(predPath).convert('L'))
-    ann = np.array(Image.open(annPath).convert('L'))
-    return get_iandu_array(pred, ann, classIdx)
+    k = (a >= 0) & (a < n)
+    return np.bincount(n * a[k].astype(int) + b[k], minlength=n ** 2).reshape(n, n)
 
 
-def get_iandu_npy(predPath: str, annPath, classIdx: int) -> Tuple[int, int]:
+def per_class_iu(hist):
     """
-    This method is similar to "get_iandu_path".
-    We use "numpy.load" to open a .npy file, then calculate and return the i and u.
-    "pred" and "ann" should contain uint8-like values from 0 to 3.
-
-    Args:
-        predPath: Your single .npy prediction's path.
-        annPath: Your single .npy annotation's path.
-        classIdx: Your specified class index.
-        
-    Returns:
-        i, u: intersection and union respectively.
+    计算每个类别的IoU
     """
-    pred = np.load(predPath)
-    ann = np.load(annPath)
-    return get_iandu_array(pred, ann, classIdx)
+    print('Defect class IoU as follows:')
+    print(np.diag(hist)[1:] / np.maximum((hist.sum(1) + hist.sum(0) - np.diag(hist))[1:], 1))
+    return np.diag(hist)[1:] / np.maximum((hist.sum(1) + hist.sum(0) - np.diag(hist))[1:], 1)
 
 
-def get_iandu_array(pred, ann, classIdx: int) -> Tuple[int, int]:
+def per_class_PA(hist):
     """
-    This method calculate the intersection and union between array-like "pred" and "ann".
-
-    Args:
-        pred: Your prediction array.
-        ann: Your annotation array.
-        classIdx: Your target class index.
-
-    Returns:
-        i, u: intersection and union respectively.
+    计算每个类别的准确率
     """
-    if isinstance(pred, torch.Tensor): pred = pred.numpy()
-    if isinstance(ann, torch.Tensor): ann = ann.numpy()
-    if not (0 <= classIdx and classIdx <= 3): raise ValueError(f'You should pass "classIdx" between 0 and 3 but you got {classIdx}.')
-    if not (pred.shape == ann.shape):
-        raise ValueError(f'You should pass "pred" and "ann" with same shape but you got a "pred" shape {pred.shape} and an "ann" shape {ann.shape}.')
-    if not (pred.shape[-2:] == (200, 200)): warn("You'd better use array of (200, 200) shape but we didn't test this.", UserWarning)
-    i = np.sum(np.logical_and(np.equal(pred, ann), np.equal(ann, classIdx)))
-    u = np.sum(np.logical_or(np.equal(pred, classIdx), np.equal(ann, classIdx)))
-    return i, u
+    return np.diag(hist) / np.maximum(hist.sum(1), 1)
 
 
-def get_arrays_dir(dir: str) -> List[np.ndarray]:
+def compute_mIoU(gt_dir, pred_dir):
     """
-    This method returns "numpy.ndarray"s in uint8-like dtype in a directory.
-    We transform files into numpy.ndarray and save them in a "list" then return.
-    The searching order is "png, jpg, npy" and we only support them.
-
-    Args:
-        dir: Your directory path which saves many files.
-
-    Returns:
-        arrays: Lists of your ndarrays.
+    计算mIoU和mPA
+    gt_dir: 真实标签文件夹
+    pred_dir: 预测结果文件夹
+    npy_name_list: 文件名列表
+    num_classes: 类别总数
     """
-    dir, xs = Path(dir), None
-    assert dir.is_dir()
+    num_classes = 4
+    print('Num classes', num_classes)
+    hist = np.zeros((num_classes, num_classes))
 
-    pngs = sorted(dir.glob('*.png'))
-    if len(pngs) == 840: xs = pngs
-    jpgs = sorted(dir.glob('*.jpg'))
-    if len(jpgs) == 840: xs = jpgs
-    if xs is not None:
-        return [np.array(Image.open(p).convert('L')) for p in xs]
+    # 提取文件编号
+    npy_name_list = [f.split('_')[1].split('.')[0] for f in os.listdir(pred_dir) if f.endswith('.npy')]
 
-    npys = sorted(dir.glob('*.npy'))
-    if len(npys) == 840: xs = npys
-    if xs is not None:
-        return [np.load(p) for p in xs]
+    # 修改命名规则以匹配文件名
+    gt_npy_files = [os.path.join(gt_dir, f"ground_truth_{x}.npy") for x in npy_name_list]
+    pred_npy_files = [os.path.join(pred_dir, f"prediction_{x}.npy") for x in npy_name_list]
 
-    raise FileNotFoundError('Missing file in test directory.')
+    for ind in range(len(gt_npy_files)):
+        # 检查文件是否存在
+        if not os.path.isfile(gt_npy_files[ind]):
+            print(f"Ground truth file not found: {gt_npy_files[ind]}")
+            continue
 
+        if not os.path.isfile(pred_npy_files[ind]):
+            print(f"Prediction file not found: {pred_npy_files[ind]}")
+            continue
 
-def get_ious_dir(preds_dir: str, anns_dir: str) -> Tuple[float, float, float, float]:
-    """
-    This method get 2 directory and transform them into arrays, then calculate the 3 types of iou and mIoU.
-    
-    Args:
-        preds_dir: Your directory where predictions are saved.
-        anns_dir: Your directory where annotations are saved.
+        # 读取npy文件
+        pred = np.load(pred_npy_files[ind])
+        label = np.load(gt_npy_files[ind])
 
-    Returns:
-        iou_inclusions, iou_patches, iou_scratches, mIoU: Same as name.
-    """
-    preds = get_arrays_dir(preds_dir)
-    anns = get_arrays_dir(anns_dir)
-    # We did not use "re" to strongly assert two list are matched here but you can
+        # 检查预测和标签的尺寸是否一致
+        if len(label.flatten()) != len(pred.flatten()):
+            print('Skipping: len(gt) = {:d}, len(pred) = {:d}, {:s}, {:s}'.format(
+                len(label.flatten()), len(pred.flatten()), gt_npy_files[ind],
+                pred_npy_files[ind]))
+            continue
 
-    i1, u1, i2, u2, i3, u3 = 0, 0, 0, 0, 0, 0
-    for pred, ann in zip(preds, anns):
-        i, u = get_iandu_array(pred, ann, 1)
-        i1, u1 = i1 + i, u1 + u
+        # 计算并累加hist矩阵
+        hist += fast_hist(label.flatten(), pred.flatten(), num_classes)
 
-        i, u = get_iandu_array(pred, ann, 2)
-        i2, u2 = i2 + i, u2 + u
+    # 计算最终的mIoU和mPA
+    mIoUs = per_class_iu(hist)
+    mPA = per_class_PA(hist)
 
-        i, u = get_iandu_array(pred, ann, 3)
-        i3, u3 = i3 + i, u3 + u
-    iou1, iou2, iou3 = i1 / u1, i2 / u2, i3 / u3
-    mIoU = (iou1 + iou2 + iou3) / 3
-    return iou1, iou2, iou3, mIoU
+    # 输出所有类别的平均mIoU和mPA
+    print('===> mIoU: ' + str(round(np.nanmean(mIoUs) * 100, 4)) +
+          '; mPA: ' + str(round(np.nanmean(mPA) * 100, 4)))
+
+    return mIoUs
 
 
-if __name__ == '__main__':
-    # iou1, iou2, iou3, mIoU = get_ious_dir('./test_ground_truths', './test_predictions')
-    # print(f'Class 1 IoU: {iou1}')
-    # print(f'Class 2 IoU: {iou2}')
-    # print(f'Class 3 IoU: {iou3}')
-    # print(f'mIoU: {mIoU}')
-    iou1, iou2, iou3, mIoU = get_ious_dir('./test_ground_truths', './baseline_predictions')
-    print(f'Class 1 IoU: {iou1}')
-    print(f'Class 2 IoU: {iou2}')
-    print(f'Class 3 IoU: {iou3}')
-    print(f'mIoU: {mIoU}')
+if __name__ == "__main__":
+    # 训练好的模型的路径
+
+    score = 0
+    ####计算class IoU分数####
+    pred_dir = 'test_predictions/'
+    base_dir = 'baseline_predictions/'
+    gt_dir = 'test_ground_truths/'
+    improvement_threshold = 0.06
+
+    # 计算mIoU和mPA
+    print("Baseline predictions")
+    base_IoU = compute_mIoU(gt_dir, base_dir)
+    print({f'base ious:'}, base_IoU)
+    print("Ours predictions")
+    pre_IoU = compute_mIoU(gt_dir, pred_dir)
+    thr = 130
+
+    for pre, base in zip(pre_IoU, base_IoU):
+        delta = pre - base
+        if delta >= improvement_threshold:
+            score_class = 100
+        else:
+            if delta <= 0:
+                score_class = 0
+            else:
+                score_class = 40 + (thr * delta) ** 2
+        print(f"score：{score_class}")
+        score += score_class
+    print(f"Class IoU scores：{score}")
+
+
+
