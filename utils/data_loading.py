@@ -68,7 +68,7 @@ class BasicDataset(Dataset):
             A.CLAHE(p=0.8),
             A.Resize(224, 224),  # 调整图像大小
             A.RandomBrightnessContrast(p=0.8),
-            A.RandomGamma(p=0.8)])
+            A.RandomGamma(p=0.8)],is_check_shapes=False)
 
     def __len__(self):
         return len(self.ids)
