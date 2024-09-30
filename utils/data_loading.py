@@ -61,7 +61,7 @@ class BasicDataset(Dataset):
             A.VerticalFlip(p=0.5),
             A.RandomRotate90(p=0.5),
             A.OneOf([
-                A.ElasticTransform(alpha=120, sigma=120 * 0.05, alpha_affine=120 * 0.03, p=0.5),
+                A.ElasticTransform(alpha=120, sigma=120 * 0.05, alpha_affine=None, p=0.5),  # 将 alpha_affine 设置为 None
                 A.GridDistortion(p=0.5),
                 A.OpticalDistortion(distort_limit=2, shift_limit=0.5, p=1)
                 ], p=0.8),
