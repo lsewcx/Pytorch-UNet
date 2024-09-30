@@ -67,7 +67,7 @@ class BasicDataset(Dataset):
                 A.GridDistortion(p=0.5),
                 A.OpticalDistortion(distort_limit=2, shift_limit=0.5, p=1)
             ], p=0.8),
-            A.Resize(320, 480),
+            A.Resize(640, 640),
             # A.RandomBrightnessContrast(p=0.8),
             # A.RandomGamma(p=0.8)
         ], is_check_shapes=False)
