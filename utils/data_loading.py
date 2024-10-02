@@ -121,9 +121,9 @@ class BasicDataset(Dataset):
         mask = np.array(mask)
 
         # Apply augmentations
-        augmented = self.aug(image=img, mask=mask)
-        img = augmented['image']
-        mask = augmented['mask']
+        # augmented = self.aug(image=img, mask=mask)
+        # img = augmented['image']
+        # mask = augmented['mask']
 
         img = self.preprocess(self.mask_values, Image.fromarray(img), self.scale, is_mask=False)
         mask = self.preprocess(self.mask_values, Image.fromarray(mask), self.scale, is_mask=True)
