@@ -218,13 +218,15 @@ class self_net(nn.Module):
         self.bn3 = nn.BatchNorm2d(256)
         self.deconv1 = nn.ConvTranspose2d(256, 128, kernel_size=3, stride=2, padding=1, output_padding=1)
         self.deconv2 = nn.ConvTranspose2d(128, 4, kernel_size=3, stride=2, padding=1, output_padding=1)
+        self.upsample = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
 
     def forward(self, x):
         x1 = torch.relu(self.bn1(self.conv1(x)))
         x2 = torch.relu(self.bn2(self.conv2(x1)))
         x3 = torch.relu(self.bn3(self.conv3(x2)))
         x4 = self.deconv1(x3)
-        x5 = self.deconv2(x4 + x2)
+        x2_upsampled = self.upsample(x2)
+        x5 = self.deconv2(x4 + x2_upsampled)
         return x5
 
 
