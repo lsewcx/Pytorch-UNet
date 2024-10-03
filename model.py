@@ -212,14 +212,13 @@ class self_net(nn.Module):
         super(self_net, self).__init__()
         self.conv1 = nn.Conv2d(3, 64, kernel_size=3, padding=1)
         self.conv2 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
-        self.deconv = nn.ConvTranspose2d(128, 4, kernel_size=3, stride=2, padding=1, output_padding=1)
+        self.deconv = nn.ConvTranspose2d(128, 4, kernel_size=3, stride=1, padding=1)
 
     def forward(self, x):
         x = torch.relu(self.conv1(x))
         x = torch.relu(self.conv2(x))
         x = self.deconv(x)
         return x
-
 
 
 
