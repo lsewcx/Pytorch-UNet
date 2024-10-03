@@ -207,9 +207,9 @@ class Up(nn.Module):
 
 #         return out
 
-class SelfNet(nn.Module):
+class self_net(nn.Module):
     def __init__(self):
-        super(SelfNet, self).__init__()
+        super(self_net, self).__init__()
         self.conv1 = nn.Conv2d(3, 64, kernel_size=3, padding=1)
         self.bn1 = nn.BatchNorm2d(64)
         self.conv2 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
