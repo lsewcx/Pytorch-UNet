@@ -219,6 +219,7 @@ class self_net(nn.Module):
         self.deconv1 = nn.ConvTranspose2d(256, 128, kernel_size=3, stride=2, padding=1, output_padding=1)
         self.deconv2 = nn.ConvTranspose2d(128, 4, kernel_size=3, stride=2, padding=1, output_padding=1)
         self.upsample = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
+        self.final_upsample = nn.Upsample((224, 224), mode='bilinear', align_corners=True)  # 添加这一行
 
     def forward(self, x):
         x1 = torch.relu(self.bn1(self.conv1(x)))
@@ -227,6 +228,7 @@ class self_net(nn.Module):
         x4 = self.deconv1(x3)
         x2_upsampled = self.upsample(x2)
         x5 = self.deconv2(x4 + x2_upsampled)
+        x5 = self.final_upsample(x5)  # 添加这一行
         return x5
 
 
