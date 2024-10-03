@@ -214,13 +214,14 @@ class self_net(nn.Module):
         self.bn1 = nn.BatchNorm2d(64)
         self.conv2 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
         self.bn2 = nn.BatchNorm2d(128)
+        self.conv3 = nn.Conv2d(128, 128, kernel_size=3, padding=1)
+        self.bn3 = nn.BatchNorm2d(128)
         self.deconv = nn.ConvTranspose2d(128, 4, kernel_size=3, stride=1, padding=1)
 
     def forward(self, x):
-        x = self.bn1(self.conv1(x))
-        x = torch.leaky_relu(x, negative_slope=0.2)  # 使用Leaky ReLU
-        x = self.bn2(self.conv2(x))
-        x = torch.leaky_relu(x, negative_slope=0.2)  # 使用Leaky ReLU
+        x = torch.relu(self.bn1(self.conv1(x)))
+        x = torch.relu(self.bn2(self.conv2(x)))
+        x = torch.relu(self.bn3(self.conv3(x)))
         x = self.deconv(x)
         return x
 
