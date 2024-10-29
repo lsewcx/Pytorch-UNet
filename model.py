@@ -177,8 +177,10 @@ class self_net(nn.Module):
     def __init__(self, num_classes=4):
         super(self_net, self).__init__()
         self.backbone = resnet50(num_classes=1000)
+        self.backbone.fc = nn.Identity()  # 移除 ResNet 的全连接层
         self.conv1 = nn.Conv2d(2048, 512, kernel_size=3, padding=1)
         self.conv2 = nn.Conv2d(512, num_classes, kernel_size=1)
+        self.upsample = nn.Upsample(scale_factor=32, mode='bilinear', align_corners=True)  # 添加上采样层
 
     def forward(self, x):
         x = self.backbone.conv1(x)
@@ -194,11 +196,12 @@ class self_net(nn.Module):
         x = self.conv1(x)
         x = F.relu(x)
         x = self.conv2(x)
+        x = self.upsample(x)  # 上采样到原始输入图像的大小
         return x
     
 if __name__ == "__main__":
     model = self_net()
     output = model(torch.randn(1, 3, 224, 224))
-    print(output)
+    print(output.shape)
     total_params = sum(param.numel() for param in model.parameters())
     print(f"Total number of parameters: {total_params / 1_000_000:.2f}M")
