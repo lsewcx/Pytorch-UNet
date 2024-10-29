@@ -158,9 +158,9 @@ def resnet50(num_classes=1000):
     return ResNet(Bottleneck, [3, 4, 6, 3], num_classes=num_classes)
 
 
-class SelfNet(nn.Module):
+class self_net(nn.Module):
     def __init__(self, num_classes=4):
-        super(SelfNet, self).__init__()
+        super(self_net, self).__init__()
         self.backbone = resnet50(num_classes=1000)
         self.fc = nn.Linear(1000, num_classes)
 
