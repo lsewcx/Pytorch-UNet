@@ -2,6 +2,37 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+'''
+深度可分离卷积
+SEB模块
+'''
+class DepthwiseSeparableConv(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=False):
+        super(DepthwiseSeparableConv, self).__init__()
+        self.depthwise = nn.Conv2d(in_channels, in_channels, kernel_size=kernel_size, stride=stride, padding=padding, groups=in_channels, bias=bias)
+        self.pointwise = nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=1, bias=bias)
+
+    def forward(self, x):
+        x = self.depthwise(x)
+        x = self.pointwise(x)
+        return x
+
+class SEB(nn.Module):
+    def __init__(self, in_channels, reduction=16):
+        super(SEB, self).__init__()
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.fc = nn.Sequential(
+            nn.Linear(in_channels, in_channels // reduction, bias=False),
+            nn.ReLU(inplace=True),
+            nn.Linear(in_channels // reduction, in_channels, bias=False),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        b, c, _, _ = x.size()
+        y = self.avg_pool(x).view(b, c)
+        y = self.fc(y).view(b, c, 1, 1)
+        return x * y.expand_as(x)
 
 class BasicBlock(nn.Module):
     expansion: int = 1
@@ -10,15 +41,12 @@ class BasicBlock(nn.Module):
         super(BasicBlock, self).__init__()
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
-        self.conv1 = nn.Conv2d(
-            inplanes, planes, kernel_size=3, stride=stride, padding=1, bias=False
-        )
+        self.conv1 = DepthwiseSeparableConv(inplanes, planes, stride=stride)
         self.bn1 = norm_layer(planes)
         self.relu = nn.ReLU(inplace=True)
-        self.conv2 = nn.Conv2d(
-            planes, planes, kernel_size=3, stride=1, padding=1, bias=False
-        )
+        self.conv2 = DepthwiseSeparableConv(planes, planes)
         self.bn2 = norm_layer(planes)
+        self.seb = SEB(planes)
         self.downsample = downsample
         self.stride = stride
 
@@ -31,6 +59,7 @@ class BasicBlock(nn.Module):
 
         out = self.conv2(out)
         out = self.bn2(out)
+        out = self.seb(out)
 
         if self.downsample is not None:
             identity = self.downsample(x)
@@ -39,7 +68,6 @@ class BasicBlock(nn.Module):
         out = self.relu(out)
 
         return out
-
 
 class Bottleneck(nn.Module):
     expansion = 4
@@ -51,14 +79,11 @@ class Bottleneck(nn.Module):
         width = planes
         self.conv1 = nn.Conv2d(inplanes, width, kernel_size=1, stride=1, bias=False)
         self.bn1 = norm_layer(width)
-        self.conv2 = nn.Conv2d(
-            width, width, kernel_size=3, stride=stride, padding=1, bias=False
-        )
+        self.conv2 = DepthwiseSeparableConv(width, width, stride=stride)
         self.bn2 = norm_layer(width)
-        self.conv3 = nn.Conv2d(
-            width, planes * self.expansion, kernel_size=1, stride=1, bias=False
-        )
+        self.conv3 = nn.Conv2d(width, planes * self.expansion, kernel_size=1, stride=1, bias=False)
         self.bn3 = norm_layer(planes * self.expansion)
+        self.seb = SEB(planes * self.expansion)
         self.relu = nn.ReLU(inplace=True)
         self.downsample = downsample
         self.stride = stride
@@ -76,6 +101,7 @@ class Bottleneck(nn.Module):
 
         out = self.conv3(out)
         out = self.bn3(out)
+        out = self.seb(out)
 
         if self.downsample is not None:
             identity = self.downsample(x)
@@ -85,7 +111,6 @@ class Bottleneck(nn.Module):
 
         return out
 
-
 class ResNet(nn.Module):
     def __init__(self, block, layers, num_classes=1000, norm_layer=None):
         super(ResNet, self).__init__()
@@ -93,9 +118,7 @@ class ResNet(nn.Module):
             norm_layer = nn.BatchNorm2d
         self._norm_layer = norm_layer
         self.inplanes = 64
-        self.conv1 = nn.Conv2d(
-            3, self.inplanes, kernel_size=7, stride=2, padding=3, bias=False
-        )
+        self.conv1 = nn.Conv2d(3, self.inplanes, kernel_size=7, stride=2, padding=3, bias=False)
         self.bn1 = norm_layer(self.inplanes)
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
@@ -118,13 +141,7 @@ class ResNet(nn.Module):
         downsample = None
         if stride != 1 or self.inplanes != planes * block.expansion:
             downsample = nn.Sequential(
-                nn.Conv2d(
-                    self.inplanes,
-                    planes * block.expansion,
-                    kernel_size=1,
-                    stride=stride,
-                    bias=False,
-                ),
+                nn.Conv2d(self.inplanes, planes * block.expansion, kernel_size=1, stride=stride, bias=False),
                 norm_layer(planes * block.expansion),
             )
 
@@ -153,10 +170,8 @@ class ResNet(nn.Module):
 
         return x
 
-
 def resnet50(num_classes=1000):
     return ResNet(Bottleneck, [3, 4, 6, 3], num_classes=num_classes)
-
 
 class self_net(nn.Module):
     def __init__(self, num_classes=4):
@@ -168,3 +183,10 @@ class self_net(nn.Module):
         x = self.backbone(x)
         x = self.fc(x)
         return x
+    
+if __name__ == "__main__":
+    model = self_net()
+    output = model(torch.randn(1, 3, 224, 224))
+    print(output)
+    total_params = sum(param.numel() for param in model.parameters())
+    print(f"Total number of parameters: {total_params / 1_000_000:.2f}M")
