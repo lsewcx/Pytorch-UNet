@@ -110,7 +110,7 @@ def train_model(
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, "max", patience=5
     )  # goal: maximize Dice score
-    grad_scaler = torch.cuda.amp.GradScaler(enabled=amp)
+    grad_scaler = torch.amp.GradScaler(enabled=amp)
     criterion = nn.CrossEntropyLoss()
     global_step = 0
     best_val_score = float("-inf")
@@ -129,6 +129,9 @@ def train_model(
                     memory_format=torch.channels_last,
                 )
                 true_masks = true_masks.to(device=device, dtype=torch.long)
+
+                # 确保 true_masks 是 1D 张量
+                true_masks = true_masks.squeeze(1)
 
                 with torch.autocast(
                     device.type if device.type != "mps" else "cpu", enabled=amp
@@ -250,7 +253,7 @@ def get_args():
         "--load", "-f", type=str, default=False, help="Load model from a .pth file"
     )
     parser.add_argument(
-        "--scale", "-s", type=float, default=1, help="Downscaling factor of the images"
+        "--scale", "-s", type=float, default 1, help="Downscaling factor of the images"
     )
     parser.add_argument(
         "--validation",
