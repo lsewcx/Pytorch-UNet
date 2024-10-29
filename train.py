@@ -253,7 +253,7 @@ def get_args():
         "--load", "-f", type=str, default=False, help="Load model from a .pth file"
     )
     parser.add_argument(
-        "--scale", "-s", type=float, default 1, help="Downscaling factor of the images"
+        "--scale", "-s", type=float, default=1, help="Downscaling factor of the images"
     )
     parser.add_argument(
         "--validation",
