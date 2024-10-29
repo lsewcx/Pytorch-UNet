@@ -116,21 +116,14 @@ class BasicDataset(Dataset):
         assert img.size == mask.size, \
             f'Image and mask {name} should be the same size, but are {img.size} and {mask.size}'
 
-        # Convert PIL images to numpy arrays
-        img = np.array(img)
-        mask = np.array(mask)
+        img = self.preprocess(self.mask_values, img, self.scale, is_mask=False)
+        mask = self.preprocess(self.mask_values, mask, self.scale, is_mask=True)
 
-        # Apply augmentations
-        # augmented = self.aug(image=img, mask=mask)
-        # img = augmented['image']
-        # mask = augmented['mask']
-
-        img = self.preprocess(self.mask_values, Image.fromarray(img), self.scale, is_mask=False)
-        mask = self.preprocess(self.mask_values, Image.fromarray(mask), self.scale, is_mask=True)
         return {
             'image': torch.as_tensor(img.copy()).float().contiguous(),
             'mask': torch.as_tensor(mask.copy()).long().contiguous()
         }
+
 
 
 class CarvanaDataset(BasicDataset):
