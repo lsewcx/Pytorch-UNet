@@ -177,11 +177,23 @@ class self_net(nn.Module):
     def __init__(self, num_classes=4):
         super(self_net, self).__init__()
         self.backbone = resnet50(num_classes=1000)
-        self.fc = nn.Linear(1000, num_classes)
+        self.conv1 = nn.Conv2d(2048, 512, kernel_size=3, padding=1)
+        self.conv2 = nn.Conv2d(512, num_classes, kernel_size=1)
 
     def forward(self, x):
-        x = self.backbone(x)
-        x = self.fc(x)
+        x = self.backbone.conv1(x)
+        x = self.backbone.bn1(x)
+        x = self.backbone.relu(x)
+        x = self.backbone.maxpool(x)
+
+        x = self.backbone.layer1(x)
+        x = self.backbone.layer2(x)
+        x = self.backbone.layer3(x)
+        x = self.backbone.layer4(x)
+
+        x = self.conv1(x)
+        x = F.relu(x)
+        x = self.conv2(x)
         return x
     
 if __name__ == "__main__":

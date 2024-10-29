@@ -131,8 +131,6 @@ def train_model(
                 )
                 true_masks = true_masks.to(device=device, dtype=torch.long)
                 print(true_masks.shape)
-                # 确保 true_masks 是 1D 张量
-                true_masks = true_masks.squeeze(1)
 
                 with torch.autocast(
                     device.type if device.type != "mps" else "cpu", enabled=amp
