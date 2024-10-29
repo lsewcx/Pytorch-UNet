@@ -3,6 +3,7 @@ import logging
 import os
 import random
 import sys
+from networkx import turan_graph
 import torch
 import torch.amp
 import torch.nn as nn
@@ -129,7 +130,7 @@ def train_model(
                     memory_format=torch.channels_last,
                 )
                 true_masks = true_masks.to(device=device, dtype=torch.long)
-
+                print(true_masks.shape)
                 # 确保 true_masks 是 1D 张量
                 true_masks = true_masks.squeeze(1)
 
