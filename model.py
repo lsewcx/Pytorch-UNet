@@ -1,93 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
-class Bottleneck(nn.Module):
-    expansion = 4
-
-    def __init__(self, inplanes, planes, stride=1, downsample=None):
-        super(Bottleneck, self).__init__()
-        self.conv1 = conv1x1(inplanes, planes)
-        self.bn1 = nn.BatchNorm2d(planes)
-        self.conv2 = conv3x3(planes, planes, stride)
-        self.bn2 = nn.BatchNorm2d(planes)
-        self.conv3 = conv1x1(planes, planes * self.expansion)
-        self.bn3 = nn.BatchNorm2d(planes * self.expansion)
-        self.relu = nn.ReLU(inplace=True)
-        self.downsample = downsample
-        self.stride = stride
-
-    def forward(self, x):
-        identity = x
-
-        out = self.conv1(x)
-        out = self.bn1(out)
-        out = self.relu(out)
-
-        out = self.conv2(out)
-        out = self.bn2(out)
-        out = self.relu(out)
-
-        out = self.conv3(out)
-        out = self.bn3(out)
-
-        if self.downsample is not None:
-            identity = self.downsample(x)
-
-        out += identity
-        out = self.relu(out)
-
-        return out
-
-class ResNet(nn.Module):
-    def __init__(self, block, layers, num_classes=1000):
-        super().__init__()
-        self.in_channel = 64
-        self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3, bias=False)
-        self.bn1 = nn.BatchNorm2d(64)
-        self.relu = nn.ReLU(inplace=False)
-        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=0, ceil_mode=True)
-
-        self.layer1 = self._make_layer(block, 64, layers[0])
-        self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
-        self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
-        self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
-
-        self.avgpool = nn.AdaptiveAvgPool2d(1)
-        self.classifier = nn.Linear(512 * block.expansion, num_classes)
-        self.softmax = nn.Softmax(-1)
-
-    def forward(self, x):
-        out = self.conv1(x)
-        out = self.bn1(out)
-        out = self.relu(out)  # 确保ReLU操作不是就地操作
-        out = self.maxpool(out)
-
-        out = self.layer1(out)
-        out = self.layer2(out)
-        out = self.layer3(out)
-        out = self.layer4(out)
-
-        out = self.avgpool(out)
-        out = out.reshape(out.shape[0], -1)
-        out = self.classifier(out)
-        out = self.softmax(out)
-
-        return out
-
-    def _make_layer(self, block, channel, blocks, stride=1):
-        downsample = None
-        if stride != 1 or self.in_channel != channel * block.expansion:
-            downsample = nn.Conv2d(self.in_channel, channel * block.expansion, stride=stride, kernel_size=1, bias=False)
-        layers = []
-        layers.append(block(self.in_channel, channel, downsample=downsample, stride=stride))
-        self.in_channel = channel * block.expansion
-        for _ in range(1, blocks):
-            layers.append(block(self.in_channel, channel))
-        return nn.Sequential(*layers)
-
-def ResNet50(num_classes=1000):
-    return ResNet(BottleNeck, [3, 4, 6, 3], num_classes=num_classes)
+from torchvision.models import resnet50
 
 class CoordinateAttention(nn.Module):
     def __init__(self, in_channels, out_channels, reduction=32):
@@ -188,12 +102,12 @@ class self_net(nn.Module):
         self.n_classes = n_classes
         self.bilinear = bilinear
 
-        self.encoder = ResNet50()
+        self.encoder = resnet50(pretrained=True)
         self.inc = DoubleConv(n_channels, 64)
-        self.down1 = self.encoder.layer1
-        self.down2 = self.encoder.layer2
-        self.down3 = self.encoder.layer3
-        self.down4 = self.encoder.layer4
+        self.down1 = nn.Sequential(self.encoder.layer1)
+        self.down2 = nn.Sequential(self.encoder.layer2)
+        self.down3 = nn.Sequential(self.encoder.layer3)
+        self.down4 = nn.Sequential(self.encoder.layer4)
         self.up1 = Up(2048+1024, 1024, bilinear)
         self.up2 = Up(1024+512, 512, bilinear)
         self.up3 = Up(512+256, 256, bilinear)
