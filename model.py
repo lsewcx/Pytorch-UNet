@@ -45,54 +45,55 @@ class BottleNeck(nn.Module):
         out = self.relu(out)  # 确保ReLU操作不是就地操作
         return out
 
-    
 class ResNet(nn.Module):
-    def __init__(self,block,layers,num_classes=1000):
+    def __init__(self, block, layers, num_classes=1000):
         super().__init__()
-        self.in_channel=64
-        self.conv1=nn.Conv2d(3,64,kernel_size=7,stride=2,padding=3,bias=False)
-        self.bn1=nn.BatchNorm2d(64)
-        self.relu=nn.ReLU(inplace=False)
-        self.maxpool=nn.MaxPool2d(kernel_size=3,stride=2,padding=0,ceil_mode=True)
+        self.in_channel = 64
+        self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3, bias=False)
+        self.bn1 = nn.BatchNorm2d(64)
+        self.relu = nn.ReLU(inplace=False)
+        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=0, ceil_mode=True)
 
-        self.layer1=self._make_layer(block,64,layers[0])
-        self.layer2=self._make_layer(block,128,layers[1],stride=2)
-        self.layer3=self._make_layer(block,256,layers[2],stride=2)
-        self.layer4=self._make_layer(block,512,layers[3],stride=2)
+        self.layer1 = self._make_layer(block, 64, layers[0])
+        self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
+        self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
+        self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
 
-        self.avgpool=nn.AdaptiveAvgPool2d(1)
-        self.classifier=nn.Linear(512*block.expansion,num_classes)
-        self.softmax=nn.Softmax(-1)
+        self.avgpool = nn.AdaptiveAvgPool2d(1)
+        self.classifier = nn.Linear(512 * block.expansion, num_classes)
+        self.softmax = nn.Softmax(-1)
 
-    def forward(self,x):
-        out=self.relu(self.bn1(self.conv1(x))) #bs,112,112,64
-        out=self.maxpool(out) #bs,56,56,64
+    def forward(self, x):
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)  # 确保ReLU操作不是就地操作
+        out = self.maxpool(out)
 
-        out=self.layer1(out) #bs,56,56,64*4
-        out=self.layer2(out) #bs,28,28,128*4
-        out=self.layer3(out) #bs,14,14,256*4
-        out=self.layer4(out) #bs,7,7,512*4
+        out = self.layer1(out)
+        out = self.layer2(out)
+        out = self.layer3(out)
+        out = self.layer4(out)
 
-        out=self.avgpool(out) #bs,1,1,512*4
-        out=out.reshape(out.shape[0],-1) #bs,512*4
-        out=self.classifier(out) #bs,1000
-        out=self.softmax(out)
+        out = self.avgpool(out)
+        out = out.reshape(out.shape[0], -1)
+        out = self.classifier(out)
+        out = self.softmax(out)
 
         return out
 
-    def _make_layer(self,block,channel,blocks,stride=1):
+    def _make_layer(self, block, channel, blocks, stride=1):
         downsample = None
-        if(stride!=1 or self.in_channel!=channel*block.expansion):
-            self.downsample=nn.Conv2d(self.in_channel,channel*block.expansion,stride=stride,kernel_size=1,bias=False)
-        layers=[]
-        layers.append(block(self.in_channel,channel,downsample=self.downsample,stride=stride))
-        self.in_channel=channel*block.expansion
-        for _ in range(1,blocks):
-            layers.append(block(self.in_channel,channel))
+        if stride != 1 or self.in_channel != channel * block.expansion:
+            downsample = nn.Conv2d(self.in_channel, channel * block.expansion, stride=stride, kernel_size=1, bias=False)
+        layers = []
+        layers.append(block(self.in_channel, channel, downsample=downsample, stride=stride))
+        self.in_channel = channel * block.expansion
+        for _ in range(1, blocks):
+            layers.append(block(self.in_channel, channel))
         return nn.Sequential(*layers)
 
 def ResNet50(num_classes=1000):
-    return ResNet(BottleNeck,[3,4,6,3],num_classes=num_classes)
+    return ResNet(BottleNeck, [3, 4, 6, 3], num_classes=num_classes)
 
 class CoordinateAttention(nn.Module):
     def __init__(self, in_channels, out_channels, reduction=32):
