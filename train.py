@@ -26,6 +26,8 @@ torch.autograd.set_detect_anomaly(True)
 
 dir_img = Path("./NEU_Seg-main/images/training")
 dir_mask = Path("./NEU_Seg-main/annotations/training")
+test_img = Path("./NEU_Seg-main/images/test")
+test_mask = Path("./NEU_Seg-main/annotations/test")
 dir_checkpoint = Path("./checkpoints/")
 
 logger = logging.getLogger()
@@ -82,19 +84,22 @@ def train_model(
     except (AssertionError, RuntimeError, IndexError):
         dataset = BasicDataset(dir_img, dir_mask, img_scale)
 
-    # 2. Split into train / validation partitions
-    n_val = int(len(dataset) * val_percent)
-    n_train = len(dataset) - n_val
-    train_set, val_set = random_split(
-        dataset, [n_train, n_val], generator=torch.Generator().manual_seed(0)
-    )
-
+    # # 2. Split into train / validation partitions
+    # n_val = int(len(dataset) * val_percent)
+    # n_train = len(dataset) - n_val
+    # train_set, val_set = random_split(
+    #     dataset, [n_train, n_val], generator=torch.Generator().manual_seed(0)
+    # )
+    try:
+        test_dataset = CarvanaDataset(test_img, test_mask, img_scale)
+    except (AssertionError, RuntimeError, IndexError):
+        test_dataset = BasicDataset(test_img, test_mask, img_scale)
     # 3. Create data loaders
     loader_args = dict(
         batch_size=batch_size, num_workers=os.cpu_count(), pin_memory=True
     )
-    train_loader = DataLoader(train_set, shuffle=True, **loader_args)
-    val_loader = DataLoader(val_set, shuffle=False, drop_last=True, **loader_args)
+    train_loader = DataLoader(dataset, shuffle=True, **loader_args)
+    val_loader = DataLoader(test_dataset, shuffle=False, drop_last=True, **loader_args)
 
     # (Initialize logging)
     experiment = wandb.init(project="U-Net", resume="allow", anonymous="must")
