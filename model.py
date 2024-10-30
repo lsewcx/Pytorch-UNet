@@ -17,7 +17,7 @@ class BottleNeck(nn.Module):
         self.conv3=nn.Conv2d(channel,channel*self.expansion,kernel_size=1,stride=1,bias=False)
         self.bn3=nn.BatchNorm2d(channel*self.expansion)
 
-        self.relu=nn.ReLU(False)
+        self.relu=nn.ReLU(inplace=False)
 
         self.downsample=downsample
         self.stride=stride
@@ -42,7 +42,7 @@ class ResNet(nn.Module):
         self.in_channel=64
         self.conv1=nn.Conv2d(3,64,kernel_size=7,stride=2,padding=3,bias=False)
         self.bn1=nn.BatchNorm2d(64)
-        self.relu=nn.ReLU(False)
+        self.relu=nn.ReLU(inplace=False)
         self.maxpool=nn.MaxPool2d(kernel_size=3,stride=2,padding=0,ceil_mode=True)
 
         self.layer1=self._make_layer(block,64,layers[0])
@@ -210,7 +210,7 @@ class self_net(nn.Module):
 
 if __name__ == '__main__':
     input_tensor = torch.randn(1, 3, 200, 200)
-    model = UNetResNet50(n_channels=3, n_classes=4)
+    model = self_net(n_channels=3, n_classes=4)
     output = model(input_tensor)
     print(f'输出形状: {output.shape}')
     total_params = sum(p.numel() for p in model.parameters())
