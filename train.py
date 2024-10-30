@@ -44,6 +44,9 @@ class FocalLoss(nn.Module):
         self.reduce = reduce
 
     def forward(self, inputs, targets):
+        # 将目标张量转换为one-hot编码格式
+        targets = F.one_hot(targets, num_classes=inputs.shape[1]).permute(0, 3, 1, 2).float()
+        
         if self.logits:
             BCE_loss = F.cross_entropy(inputs, targets, reduction='none')
         else:
