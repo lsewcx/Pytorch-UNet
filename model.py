@@ -177,7 +177,7 @@ class OutConv(nn.Module):
         return self.conv(x)
 
 class self_net(nn.Module):
-    def __init__(self, n_channels, n_classes, bilinear=True):
+    def __init__(self, n_channels=3, n_classes=4, bilinear=True):
         super(self_net, self).__init__()
         self.n_channels = n_channels
         self.n_classes = n_classes
