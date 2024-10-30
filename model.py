@@ -2,47 +2,41 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-class BottleNeck(nn.Module):
+class Bottleneck(nn.Module):
     expansion = 4
-    def __init__(self, in_channel, channel, stride=1, downsample=None):
-        super().__init__()
 
-        self.conv1 = nn.Conv2d(in_channel, channel, kernel_size=1, stride=stride, bias=False)
-        self.bn1 = nn.BatchNorm2d(channel)
-
-        self.conv2 = nn.Conv2d(channel, channel, kernel_size=3, padding=1, bias=False, stride=1, groups=channel)
-        self.pointwise = nn.Conv2d(channel, channel, kernel_size=1, bias=False)
-        self.bn2 = nn.BatchNorm2d(channel)
-
-        self.conv3 = nn.Conv2d(channel, channel * self.expansion, kernel_size=1, stride=1, bias=False)
-        self.bn3 = nn.BatchNorm2d(channel * self.expansion)
-
-        self.relu = nn.ReLU(inplace=False)
-
+    def __init__(self, inplanes, planes, stride=1, downsample=None):
+        super(Bottleneck, self).__init__()
+        self.conv1 = conv1x1(inplanes, planes)
+        self.bn1 = nn.BatchNorm2d(planes)
+        self.conv2 = conv3x3(planes, planes, stride)
+        self.bn2 = nn.BatchNorm2d(planes)
+        self.conv3 = conv1x1(planes, planes * self.expansion)
+        self.bn3 = nn.BatchNorm2d(planes * self.expansion)
+        self.relu = nn.ReLU(inplace=True)
         self.downsample = downsample
         self.stride = stride
 
     def forward(self, x):
-        residual = x
+        identity = x
 
         out = self.conv1(x)
         out = self.bn1(out)
-        out = self.relu(out)  # 确保ReLU操作不是就地操作
+        out = self.relu(out)
 
         out = self.conv2(out)
-        out = self.pointwise(out)
         out = self.bn2(out)
-        out = self.relu(out)  # 确保ReLU操作不是就地操作
+        out = self.relu(out)
 
         out = self.conv3(out)
         out = self.bn3(out)
-        out = self.relu(out)  # 确保ReLU操作不是就地操作
 
         if self.downsample is not None:
-            residual = self.downsample(residual)
+            identity = self.downsample(x)
 
-        out += residual
-        out = self.relu(out)  # 确保ReLU操作不是就地操作
+        out += identity
+        out = self.relu(out)
+
         return out
 
 class ResNet(nn.Module):
