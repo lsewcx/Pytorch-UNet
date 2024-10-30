@@ -151,7 +151,7 @@ class DoubleConv(nn.Module):
         return self.double_conv(x)
 
 class Up(nn.Module):
-    def __init__(self, in_channels, out_channels, bilinear=True):
+    def __init__(self, in_channels, out_channels, bilinear=False):
         super().__init__()
         if bilinear:
             self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)

@@ -22,6 +22,7 @@ from utils.data_loading import BasicDataset, CarvanaDataset
 from utils.dice_score import dice_loss
 from model import self_net
 
+torch.autograd.set_detect_anomaly(True)
 
 dir_img = Path("./NEU_Seg-main/images/training")
 dir_mask = Path("./NEU_Seg-main/annotations/training")
@@ -153,7 +154,6 @@ def train_model(
                     memory_format=torch.channels_last,
                 )
                 true_masks = true_masks.to(device=device, dtype=torch.long)
-                print(true_masks.shape)
 
                 with torch.autocast(
                     device.type if device.type != "mps" else "cpu", enabled=amp
