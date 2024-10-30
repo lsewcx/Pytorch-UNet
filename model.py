@@ -4,36 +4,46 @@ import torch.nn.functional as F
 
 class BottleNeck(nn.Module):
     expansion = 4
-    def __init__(self,in_channel,channel,stride=1,downsample=None):
+    def __init__(self, in_channel, channel, stride=1, downsample=None):
         super().__init__()
 
-        self.conv1=nn.Conv2d(in_channel,channel,kernel_size=1,stride=stride,bias=False)
-        self.bn1=nn.BatchNorm2d(channel)
+        self.conv1 = nn.Conv2d(in_channel, channel, kernel_size=1, stride=stride, bias=False)
+        self.bn1 = nn.BatchNorm2d(channel)
 
-        self.conv2=nn.Conv2d(channel,channel,kernel_size=3,padding=1,bias=False,stride=1, groups=channel)
+        self.conv2 = nn.Conv2d(channel, channel, kernel_size=3, padding=1, bias=False, stride=1, groups=channel)
         self.pointwise = nn.Conv2d(channel, channel, kernel_size=1, bias=False)
-        self.bn2=nn.BatchNorm2d(channel)
+        self.bn2 = nn.BatchNorm2d(channel)
 
-        self.conv3=nn.Conv2d(channel,channel*self.expansion,kernel_size=1,stride=1,bias=False)
-        self.bn3=nn.BatchNorm2d(channel*self.expansion)
+        self.conv3 = nn.Conv2d(channel, channel * self.expansion, kernel_size=1, stride=1, bias=False)
+        self.bn3 = nn.BatchNorm2d(channel * self.expansion)
 
-        self.relu=nn.ReLU(inplace=False)
+        self.relu = nn.ReLU(inplace=False)
 
-        self.downsample=downsample
-        self.stride=stride
+        self.downsample = downsample
+        self.stride = stride
 
-    def forward(self,x):
-        residual=x
+    def forward(self, x):
+        residual = x
 
-        out=self.relu(self.bn1(self.conv1(x))) #bs,c,h,w
-        out=self.relu(self.bn2(self.pointwise(self.conv2(out)))) #bs,c,h,w
-        out=self.relu(self.bn3(self.conv3(out))) #bs,4c,h,w
+        out = self.conv1(x)
+        out = self.bn1(out)
+        out = self.relu(out)  # 确保ReLU操作不是就地操作
 
-        if(self.downsample != None):
-            residual=self.downsample(residual)
+        out = self.conv2(out)
+        out = self.pointwise(out)
+        out = self.bn2(out)
+        out = self.relu(out)  # 确保ReLU操作不是就地操作
 
-        out+=residual
-        return self.relu(out)
+        out = self.conv3(out)
+        out = self.bn3(out)
+        out = self.relu(out)  # 确保ReLU操作不是就地操作
+
+        if self.downsample is not None:
+            residual = self.downsample(residual)
+
+        out += residual
+        out = self.relu(out)  # 确保ReLU操作不是就地操作
+        return out
 
     
 class ResNet(nn.Module):
