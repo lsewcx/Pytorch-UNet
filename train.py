@@ -90,10 +90,12 @@ def train_model(
     # train_set, val_set = random_split(
     #     dataset, [n_train, n_val], generator=torch.Generator().manual_seed(0)
     # )
+    n_train = len(dataset)
     try:
         test_dataset = CarvanaDataset(test_img, test_mask, img_scale)
     except (AssertionError, RuntimeError, IndexError):
         test_dataset = BasicDataset(test_img, test_mask, img_scale)
+    n_val = len(test_dataset)
     # 3. Create data loaders
     loader_args = dict(
         batch_size=batch_size, num_workers=os.cpu_count(), pin_memory=True
