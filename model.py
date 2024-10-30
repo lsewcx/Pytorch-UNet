@@ -94,7 +94,7 @@ class CoordinateAttention(nn.Module):
 
         self.conv1 = nn.Conv2d(in_channels, mip, kernel_size=1, stride=1, padding=0)
         self.bn1 = nn.BatchNorm2d(mip)
-        self.act = nn.ReLU(inplace=True)
+        self.act = nn.ReLU(inplace=False)
 
         self.conv_h = nn.Conv2d(mip, out_channels, kernel_size=1, stride=1, padding=0)
         self.conv_w = nn.Conv2d(mip, out_channels, kernel_size=1, stride=1, padding=0)
@@ -139,11 +139,11 @@ class DoubleConv(nn.Module):
         self.double_conv = nn.Sequential(
             DepthwiseSeparableConv(in_channels, mid_channels, kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(mid_channels),
-            nn.ReLU(inplace=True),
+            nn.ReLU(inplace=False),
             CoordinateAttention(mid_channels, mid_channels),
             DepthwiseSeparableConv(mid_channels, out_channels, kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(out_channels),
-            nn.ReLU(inplace=True),
+            nn.ReLU(inplace=False),
             CoordinateAttention(out_channels, out_channels),
         )
 
