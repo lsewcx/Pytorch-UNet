@@ -334,7 +334,6 @@ if __name__ == "__main__":
             learning_rate=args.lr,
             device=device,
             img_scale=args.scale,
-            val_percent=args.val / 100,
             amp=args.amp,
         )
     except torch.cuda.OutOfMemoryError:
@@ -352,6 +351,5 @@ if __name__ == "__main__":
             learning_rate=args.lr,
             device=device,
             img_scale=args.scale,
-            val_percent=args.val / 100,
             amp=args.amp,
         )
