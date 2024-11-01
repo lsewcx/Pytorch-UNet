@@ -3,33 +3,25 @@ import logging
 import os
 import random
 import sys
-from networkx import turan_graph
 import numpy as np
 import torch
 import torch.amp
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.transforms as transforms
-import torchvision.transforms.functional as TF
 from pathlib import Path
 from torch import optim
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader
 from tqdm import tqdm
 from torchvision.datasets import VOCSegmentation
 
 import wandb
 from evaluate import evaluate
 from model import self_net
-from utils.data_loading import BasicDataset, CarvanaDataset
 from utils.dice_score import dice_loss
-from model import self_net
 
 torch.autograd.set_detect_anomaly(True)
 
-# dir_img = Path("./NEU_Seg-main/images/training")
-# dir_mask = Path("./NEU_Seg-main/annotations/training")
-# test_img = Path("./NEU_Seg-main/images/test")
-# test_mask = Path("./NEU_Seg-main/annotations/test")
 dir_checkpoint = Path("./checkpoints/")
 
 logger = logging.getLogger()
@@ -70,7 +62,6 @@ def train_model(
     epochs: int = 5,
     batch_size: int = 1,
     learning_rate: float = 1e-5,
-    val_percent: float = 0.1,
     save_checkpoint: bool = True,
     img_scale: float = 0.5,
     amp: bool = False,
@@ -80,6 +71,8 @@ def train_model(
 ):
     # 将模型移动到指定设备
     model.to(device)
+    
+    # 1. Create dataset
     transform = transforms.Compose([
         transforms.Resize((256, 256)),
         transforms.ToTensor()
@@ -89,19 +82,14 @@ def train_model(
         transforms.Resize((256, 256)),
         transforms.Lambda(lambda x: torch.tensor(np.array(x), dtype=torch.long))
     ])
-    # 1. Create dataset
+    
     train_dataset = VOCSegmentation(root='./data', year='2012', image_set='train', download=True, transform=transform, target_transform=target_transform)
     test_dataset = VOCSegmentation(root='./data', year='2012', image_set='val', download=True, transform=transform, target_transform=target_transform)
-
-    # # 2. Split into train / validation partitions
-    # n_val = int(len(dataset) * val_percent)
-    # n_train = len(dataset) - n_val
-    # train_set, val_set = random_split(
-    #     dataset, [n_train, n_val], generator=torch.Generator().manual_seed(0)
-    # )
+    
     n_train = len(train_dataset)
     n_val = len(test_dataset)
-    # 3. Create data loaders
+    
+    # 2. Create data loaders
     loader_args = dict(
         batch_size=batch_size, num_workers=os.cpu_count(), pin_memory=True
     )
@@ -115,7 +103,6 @@ def train_model(
             epochs=epochs,
             batch_size=batch_size,
             learning_rate=learning_rate,
-            val_percent=val_percent,
             save_checkpoint=save_checkpoint,
             img_scale=img_scale,
             amp=amp,
@@ -136,7 +123,7 @@ def train_model(
     """
     )
 
-    # 4. Set up the optimizer, the loss, the learning rate scheduler and the loss scaling for AMP
+    # 3. Set up the optimizer, the loss, the learning rate scheduler and the loss scaling for AMP
     optimizer = optim.RMSprop(
         model.parameters(),
         lr=learning_rate,
@@ -152,13 +139,13 @@ def train_model(
     global_step = 0
     best_val_score = float("-inf")
 
-    # 5. Begin training
+    # 4. Begin training
     for epoch in range(1, epochs + 1):
         model.train()
         epoch_loss = 0
         with tqdm(total=n_train, desc=f"Epoch {epoch}/{epochs}", unit="img") as pbar:
             for batch in train_loader:
-                images, true_masks = batch["image"], batch["mask"]
+                images, true_masks = batch
 
                 images = images.to(
                     device=device,
@@ -323,48 +310,14 @@ if __name__ == "__main__":
     """
     UNet_less效果最好到现在为止
     """
-    # if args.model == 'UNet_More_Less':
-    #     model = UNet_More_Less(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
-    # elif args.model == 'UNet_less':
-    #     model = UNet_less(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
-    # elif args.model == 'UNetInception':
-    #     model = UNetInception(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
-    # elif args.model == 'UNetAttention':
-    #     model = UNetAttention(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
-    # elif args.model == 'UNet_plusplus':
-    #     model = UNetPlusPlus(n_channels=3, n_classes=args.classes,use_deconv=True, align_corners=False, is_ds=True)
-    # elif args.model == 'UNetPlusPlusInception':
-    #     model = UNetPlusPlusInception(n_classes=args.classes, n_channels=3, use_deconv=True, align_corners=False, is_ds=True)
     if args.model == "selfnet":
         model = self_net()
         total_params = sum(p.numel() for p in model.parameters())
         logging.info(f"模型的参数量: {total_params / 1e6:.2f}M")
-        # try:
-        #     import segmentation_models_pytorch as smp
-        #     # model = smp.DeepLabV3Plus(
-        #     #     encoder_name="resnet34",        # choose encoder, e.g. mobilenet_v2 or efficientnet-b7
-        #     #     in_channels=3,                  # model input channels (1 for gray-scale images, 3 for RGB, etc.)
-        #     #     classes=4,                      # model output channels (number of classes in your dataset)
-        #     # )
-        #     model = smp.Unet(
-        #     encoder_name="resnet18",        # choose encoder, e.g. mobilenet_v2 or efficientnet-b7
-        #     encoder_weights="imagenet",     # use `imagenet` pre-trained weights for encoder initialization
-        #     in_channels=3,                  # model input channels (1 for gray-scale images, 3 for RGB, etc.)
-        #     classes=4,                      # model output channels (number of classes in your dataset)
-        #     )
-        #     total_params = sum(p.numel() for p in model.parameters())
-        #     logging.info(f"模型的参数量: {total_params / 1e6:.2f}M")
-
-        # except ImportError:
-        #     pass
     else:
         raise ValueError(f"Unknown model name: {args.model}")
     logger.info(f"Network: {model.__class__.__name__}")
     model = model.to(memory_format=torch.channels_last)
-
-    # logger.info(f'Network:\n'
-    #              f'\t{model.n_channels} input channels\n'
-    #              f'\t{model.n_classes} output channels (classes)\n')
 
     if args.load:
         state_dict = torch.load(args.load, map_location=device)
