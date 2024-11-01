@@ -80,8 +80,8 @@ def train_model(
     # 将模型移动到指定设备
     model.to(device)
     # 1. Create dataset
-    train_dataset = VOCSegmentation(root='./data', year='2012', image_set='train', download=True, transform=transform)
-    test_dataset = VOCSegmentation(root='./data', year='2012', image_set='val', download=True, transform=transform)
+    train_dataset = VOCSegmentation(root='./data', year='2012', image_set='train', download=True)
+    test_dataset = VOCSegmentation(root='./data', year='2012', image_set='val', download=True)
 
     # # 2. Split into train / validation partitions
     # n_val = int(len(dataset) * val_percent)
