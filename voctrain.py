@@ -14,7 +14,7 @@ from pathlib import Path
 from torch import optim
 from torch.utils.data import DataLoader, random_split
 from tqdm import tqdm
-from torchvison.datasets import VOCSegmentation
+from torchvision.datasets import VOCSegmentation
 
 import wandb
 from evaluate import evaluate
