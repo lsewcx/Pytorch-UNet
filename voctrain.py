@@ -4,6 +4,7 @@ import os
 import random
 import sys
 from networkx import turan_graph
+import numpy as np
 import torch
 import torch.amp
 import torch.nn as nn
@@ -80,11 +81,13 @@ def train_model(
     # 将模型移动到指定设备
     model.to(device)
     transform = transforms.Compose([
+        transforms.Resize((256, 256)),
         transforms.ToTensor()
     ])
     
     target_transform = transforms.Compose([
-        transforms.ToTensor()
+        transforms.Resize((256, 256)),
+        transforms.Lambda(lambda x: torch.tensor(np.array(x), dtype=torch.long))
     ])
     # 1. Create dataset
     train_dataset = VOCSegmentation(root='./data', year='2012', image_set='train', download=True, transform=transform, target_transform=target_transform)
